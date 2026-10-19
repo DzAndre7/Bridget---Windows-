@@ -79,7 +79,8 @@ def _lint_ruff(codigo, rel):
         resultado = subprocess.run(
             [sys.executable, "-m", "ruff", "check", "--quiet", "--select", "F821,F401,F811",
              "--stdin-filename", rel, "-"],
-            input=codigo, capture_output=True, text=True, timeout=10,
+            input=codigo, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return {"exito": False, "salida": "No se pudo completar la revisión estática con Ruff."}
@@ -122,13 +123,11 @@ def proponer_mejora(ruta_archivo, funcion_llm, ruta_proyecto=None, max_intentos=
     if rechazo:
         return rechazo
     base = os.path.abspath(ruta_proyecto or RUTA_PROYECTO)
-    absoluta = os.path.abspath(
-        ruta_archivo if os.path.isabs(ruta_archivo)
-        else os.path.join(base, ruta_archivo)
-    )
-    rel = os.path.relpath(absoluta, base)
-    if rel.startswith(".."):
+    try:
+        rel = str(sandbox._ruta_proyecto(base, ruta_archivo))
+    except (OSError, ValueError):
         return {"exito": False, "motivo": f"{ruta_archivo} no pertenece al proyecto."}
+    absoluta = os.path.join(base, rel)
 
     original = _leer(absoluta)
     if original is None:
@@ -293,7 +292,11 @@ def aplicar_mejora(id_mejora, ruta_proyecto=None):
     if codigo is None:
         return {"exito": False, "motivo": "La propuesta no tiene código guardado."}
 
-    ruta_real = os.path.join(base, meta["archivo"])
+    try:
+        relativa = sandbox._ruta_proyecto(base, meta["archivo"])
+    except (OSError, ValueError):
+        return {"exito": False, "motivo": "La propuesta apunta fuera del proyecto o a un enlace."}
+    ruta_real = os.path.join(base, relativa)
     actual = _leer(ruta_real)
     if actual is None:
         return {"exito": False, "motivo": f"Ya no existe {meta['archivo']}."}

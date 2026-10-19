@@ -54,7 +54,9 @@ contra denegación de servicio del parser. No exponerla a entradas ilimitadas.
 `core/sandbox.py` prepara entradas y conserva el formato de resultados.
 `core/sandbox_backends/base.py` define estados y solicitudes inmutables y la
 interfaz `BackendAislado`. `core/sandbox_backends/__init__.py` selecciona el
-proveedor. No importa módulos POSIX ni hace descubrimiento dinámico desde
+proveedor. Usa `sys.platform`: `platform.system()` puede iniciar `ver` mediante shell en
+Windows/Python 3.11 y no es adecuado para una consulta sin procesos.
+No importa módulos POSIX ni hace descubrimiento dinámico desde
 comandos, plugins o variables del usuario.
 
 Una solicitud contiene una operación cerrada (`script` o `pytest`), el directorio

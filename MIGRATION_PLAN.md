@@ -27,7 +27,8 @@ El original y `main` no son destinos de escritura.
   Linux original se conserva íntegro como referencia, fuera de la instalación
   por defecto. Se añaden push/STT ausentes, wheels VAD y Coqui mantenido con la
   misma API. TTS local selecciona CPU cuando no hay CUDA. Ruff se invoca mediante
-  el mismo intérprete, sin depender del PATH de Scripts en Windows.
+  el mismo intérprete y con UTF-8 explícito, sin depender del PATH de Scripts
+  ni de la página de códigos de Windows.
 - **Pendiente explícito:** no se ha implementado ni habilitado un motor de
   ejecución de producción. Actualmente todas las plataformas rechazan ejecución
   dinámica. Se diseñó la integración sobre VM Windows/Windows Sandbox y la
@@ -47,7 +48,7 @@ En Codex/Linux, Python 3.12.14:
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c pytest-safety.ini -q
 ```
 
-Resultado: **105 pruebas aprobadas**, incluidas las 15 comprobaciones anteriores.
+Resultado: **110 pruebas aprobadas**, incluidas las 15 comprobaciones anteriores.
 Se prueban rechazo sin backend, garantías incompletas, errores y pérdida del
 runtime, prohibición de habilitar red, entradas y límites, rechazo de resultados
 sin prueba de aislamiento/limpieza, rutas y copias, protección de archivos
@@ -59,6 +60,14 @@ y la selección TTS se prueban cargando definiciones revisadas sin importar el
 escritorio, cargar modelos ni inicializar voz. No se ejecutó código generado,
 ni snippets, ni pruebas de proyectos recibidos. Ruff analiza estáticamente texto
 revisado: no se trata como sandbox ni como prueba dinámica.
+
+La CI Windows detectó y permitió corregir tres incompatibilidades concretas:
+la consulta `platform.system()` lanzaba `ver` mediante shell (se reemplazó por
+`sys.platform`), Ruff recibía texto con la codificación local en lugar de UTF-8,
+y `os.path.relpath` lanzaba una excepción entre unidades distintas. El validador
+de rutas real ahora se comparte con la aplicación de propuestas y también
+rechaza metadatos que apunten fuera de la raíz. Se limitó además el identificador
+de pytest del caso de entrada grande para no desbordar variables de entorno.
 
 Ruff pasó en los módulos de sandbox/auto-mejora y las pruebas nuevas. La sintaxis
 Python se comprueba en las fuentes del proyecto, sin recorrer venvs. El workflow

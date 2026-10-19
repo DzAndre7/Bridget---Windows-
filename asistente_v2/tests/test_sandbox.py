@@ -317,3 +317,13 @@ def test_salida_de_backend_tiene_limite(backend):
     resultado = sandbox.ejecutar_codigo("x = 1")
     assert len(resultado["salida"]) == sandbox.LIMITE_SALIDA
     assert len(resultado["errores"]) == sandbox.LIMITE_SALIDA
+
+
+@pytest.mark.parametrize("plataforma,nombre", [("win32", "Windows"), ("linux", "Linux"), ("otro", "otro")])
+def test_fabrica_no_sondea_sistema_mediante_comandos(monkeypatch, plataforma, nombre):
+    import platform
+    import sys
+    from core.sandbox_backends import obtener_backend
+    monkeypatch.setattr(platform, "system", Mock(side_effect=AssertionError("No consultar ver/uname")))
+    monkeypatch.setattr(sys, "platform", plataforma)
+    assert obtener_backend().sistema == nombre

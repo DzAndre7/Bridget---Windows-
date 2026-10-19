@@ -3,7 +3,7 @@
 No hay aún un backend de ejecución auditado. Tener Docker o Windows Sandbox
 instalado no demuestra que una ejecución esté aislada. Ver docs/SANDBOX.md.
 """
-import platform
+import sys
 
 from .base import BackendAislado, EstadoBackend, ResultadoBackend, SolicitudEjecucion
 
@@ -39,4 +39,9 @@ def obtener_backend() -> BackendAislado:
     Un futuro backend deberá registrarse en código y acreditar todas las
     garantías del contrato. No se habilita por detectar un ejecutable.
     """
-    return SinAislamiento(platform.system())
+    # platform.system() puede invocar `ver` mediante shell en Python/Windows.
+    # La plataforma necesaria para seleccionar el backend ya está en sys.
+    sistema = {"win32": "Windows", "linux": "Linux", "darwin": "Darwin"}.get(
+        sys.platform, sys.platform
+    )
+    return SinAislamiento(sistema)
