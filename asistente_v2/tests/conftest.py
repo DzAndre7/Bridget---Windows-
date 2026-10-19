@@ -30,5 +30,3 @@ def qemu_bundle(tmp_path):
                 "files": {n: hashlib.sha256(v).hexdigest() for n, v in files.items()}}
     (tmp_path / "bundle.json").write_text(json.dumps(manifest), encoding="utf-8")
     return tmp_path
-
-

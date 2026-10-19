@@ -81,7 +81,8 @@ def test_controller_read_only_disk_no_network_or_shares(qemu_bundle, request_vm,
     assert guard.memory == request_vm.limite_memoria + 512 * 1024 ** 2
     assert guard.cpu == request_vm.limite_cpu
     assert guard.argv[guard.argv.index("-nic") + 1] == "none"
-    assert "q35,accel=tcg" in guard.argv
+    assert "q35,accel=whpx" in guard.argv
+    assert not any("tcg" in arg for arg in guard.argv)
     assert "-virtfs" not in guard.argv and "-fsdev" not in guard.argv
     blocks = [json.loads(guard.argv[i + 1]) for i, a in enumerate(guard.argv) if a == "-blockdev"]
     assert all(b["read-only"] is True for b in blocks)

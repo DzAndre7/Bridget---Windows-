@@ -1,11 +1,12 @@
 """Contención del proceso hipervisor; la frontera de código es la VM, no el Job.
 
 Solo Windows. Se crea suspendido para asignar el Job antes de ejecutar una sola
-instrucción. Nunca se usa este módulo como ejecutor de snippets en el anfitrión.
+instrucción. La asignación es atómica al crear el proceso. Nunca se usa este módulo como ejecutor de snippets en el anfitrión.
 """
 import ctypes as C
 import os
-import subprocess
+
+from .windows_process import NativeProcess
 
 U32 = C.c_uint32
 I32 = C.c_int32
@@ -36,11 +37,6 @@ class Accounting(C.Structure):
                 ("faults", U32), ("total", U32), ("active", U32), ("terminated", U32)]
 
 
-class ThreadEntry(C.Structure):
-    _fields_ = [("size", U32), ("usage", U32), ("thread_id", U32), ("owner_pid", U32),
-                ("base_priority", I32), ("delta_priority", I32), ("flags", U32)]
-
-
 class WindowsJob:
     def __init__(self, memory_bytes, cpu_seconds):
         if os.name != "nt":
@@ -54,15 +50,8 @@ class WindowsJob:
             "CreateJobObjectW": ([HANDLE, C.c_wchar_p], HANDLE),
             "SetInformationJobObject": ([HANDLE, I32, HANDLE, U32], I32),
             "QueryInformationJobObject": ([HANDLE, I32, HANDLE, U32, HANDLE], I32),
-            "AssignProcessToJobObject": ([HANDLE, HANDLE], I32),
             "TerminateJobObject": ([HANDLE, U32], I32),
             "CloseHandle": ([HANDLE], I32),
-            "OpenProcess": ([U32, I32, U32], HANDLE),
-            "CreateToolhelp32Snapshot": ([U32, U32], HANDLE),
-            "Thread32First": ([HANDLE, C.POINTER(ThreadEntry)], I32),
-            "Thread32Next": ([HANDLE, C.POINTER(ThreadEntry)], I32),
-            "OpenThread": ([U32, I32, U32], HANDLE),
-            "ResumeThread": ([HANDLE], U32),
         }
         for name, (args, result) in signatures.items():
             function = getattr(self.api, name)
@@ -70,6 +59,7 @@ class WindowsJob:
             function.restype = result
         self.handle = self.api.CreateJobObjectW(None, None)
         self.process = None
+        self._cleaned = False
         if not self.handle:
             raise C.WinError(C.get_last_error())
         limits = ExtendedLimits()
@@ -89,62 +79,15 @@ class WindowsJob:
         if self.process is not None or not self.handle:
             raise RuntimeError("El Job es de un solo uso")
         try:
-            self.process = subprocess.Popen(
-                argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, shell=False, close_fds=True,
-                creationflags=0x4 | 0x08000000,  # CREATE_SUSPENDED | CREATE_NO_WINDOW
-            )
-            process_handle = self.api.OpenProcess(0x100 | 0x1, False, self.process.pid)
-            if not process_handle:
-                raise C.WinError(C.get_last_error())
-            try:
-                if not self.api.AssignProcessToJobObject(self.handle, process_handle):
-                    raise C.WinError(C.get_last_error())
-            finally:
-                self.api.CloseHandle(process_handle)
-            self._resume_primary_thread()
+            self.process = NativeProcess.create(self.api, self.handle, argv, cwd, env)
             return self.process
         except BaseException:
-            try:
-                if self.process is not None:
-                    # Si AssignProcess falló, aún está suspendido y no creó hijos.
-                    self.process.kill()
-                    self.process.wait(timeout=5)
-            finally:
-                self.close()
-                if self.process is not None and self.process.stdout is not None:
-                    self.process.stdout.close()
+            self.close()
             raise
-
-    def _resume_primary_thread(self):
-        snapshot = self.api.CreateToolhelp32Snapshot(0x4, 0)
-        if not snapshot or snapshot == C.c_void_p(-1).value:
-            raise C.WinError(C.get_last_error())
-        ids = []
-        try:
-            entry = ThreadEntry()
-            entry.size = C.sizeof(entry)
-            valid = self.api.Thread32First(snapshot, C.byref(entry))
-            while valid:
-                if entry.owner_pid == self.process.pid:
-                    ids.append(entry.thread_id)
-                valid = self.api.Thread32Next(snapshot, C.byref(entry))
-        finally:
-            self.api.CloseHandle(snapshot)
-        if len(ids) != 1:
-            raise RuntimeError("No se acreditó el hilo inicial suspendido")
-        thread = self.api.OpenThread(0x2, False, ids[0])
-        if not thread:
-            raise C.WinError(C.get_last_error())
-        try:
-            if self.api.ResumeThread(thread) != 1:
-                raise RuntimeError("Estado de suspensión inesperado")
-        finally:
-            self.api.CloseHandle(thread)
 
     def close(self):
         if not self.handle:
-            return False
+            return self._cleaned
         clean = False
         try:
             if not self.api.TerminateJobObject(self.handle, 1):
@@ -156,7 +99,12 @@ class WindowsJob:
                 raise C.WinError(C.get_last_error())
             clean = accounting.active == 0
         finally:
-            if not self.api.CloseHandle(self.handle):
-                clean = False
-            self.handle = None
+            try:
+                if self.process is not None:
+                    self.process.close_handle()
+            finally:
+                handle, self.handle = self.handle, None
+                if not self.api.CloseHandle(handle):
+                    clean = False
+        self._cleaned = clean
         return clean

@@ -39,7 +39,7 @@ def limits_for(request):
 
 def command(bundle, input_disk, memory):
     # JSON evita inyección de opciones con comas en rutas de -drive.
-    return [str(bundle.qemu), "-no-user-config", "-nodefaults", "-machine", "q35,accel=tcg",
+    return [str(bundle.qemu), "-no-user-config", "-nodefaults", "-machine", "q35,accel=whpx",
             "-smp", "1", "-m", str(memory // (1024 ** 2)), "-display", "none",
             "-nic", "none", "-monitor", "none", "-parallel", "none", "-serial", "stdio",
             "-no-reboot", "-L", str(bundle.firmware), "-kernel", str(bundle.kernel),
