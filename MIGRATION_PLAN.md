@@ -1,5 +1,45 @@
 # Migración y estabilización de Bridget para Windows 10/11
 
+## Actualización: primer controlador experimental de máquina virtual
+
+Sobre `migration/windows-stage-1`, partiendo de `da71d053a58960d26c2b74f95453a6bcb4ac3eba`.
+No se escribe en `main` ni en Bridget original; se mantiene el PR #1 sin fusionar.
+
+- Implementado controlador QEMU/WHPX y agente Linux invitado: sin red ni shares,
+  disco de entrada RAW de lectura, consola limitada, entorno sin secretos host,
+  hashes completos de runtime/imagen, cuotas, timeout, cancelación y teardown.
+- Contención Win32 con creación atómica dentro de Job, handles explícitos,
+  límites CPU/memoria/procesos y muerte al cerrar o desaparecer el broker.
+- **Ejecución dinámica sigue bloqueada.** Solo hay una autoprueba fija. No se
+  suministró una imagen ni se arrancó una VM: no existe evidencia del aislamiento
+  real. El éxito de tests o de la sonda no habilita el backend.
+- TCG descartado: QEMU no ofrece garantías de seguridad con emulación. Se exige
+  WHPX sin fallback; la combinación exacta aún necesita revisión de soporte y
+  seguridad. Windows Sandbox/Hyper-V siguen siendo candidatos para código Windows.
+- Evidencia local: 159 tests aprobados, 4 específicos Win32 omitidos en Linux;
+  Ruff aprobado. Los tests nuevos no ejecutan código generado ni arrancan VM.
+  CI sobre `189ed64`: **163 aprobados en Windows Server 2025**,
+  **159 aprobados/4 omitidos en Ubuntu**, Ruff aprobado en ambos. Windows verifica
+  los Job con procesos benignos fijos, incluido crash del broker.
+  [Ejecución CI](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39335991340).
+
+### Prioridades antes de habilitar
+
+1. **P0:** revisar soporte de seguridad QEMU/WHPX, endurecer identidad/ACL/red del
+   proceso host y preparar imagen reproducible sin secretos. Si no se acredita
+   esta frontera, continuar con Hyper-V; no habilitar TCG ni subprocess.
+2. **P0:** ejecutar matriz real Windows 11: aislamiento host/red, cuotas efectivas
+   (incluida memoria WHPX), cancelación, crash y limpieza externa verificable.
+3. **P1:** completar broker de invitado Windows para verificar APIs nativas;
+   Windows Sandbox 24H2 tiene CLI pero `exec` carece actualmente de stdout.
+4. **P1:** resolver cancelación durante E/S preparatoria, carreras de archivos
+   mediante ACL/identidad y revisión independiente antes de activar la fábrica.
+
+Diseño, requisitos de imagen, protocolo, limitaciones, fuentes y pruebas manuales:
+[docs/QEMU_BACKEND.md](docs/QEMU_BACKEND.md). Las secciones siguientes conservan
+el historial de etapas anteriores y sus resultados, no acreditan esta VM.
+
+
 ## Actualización: cierre seguro del sandbox y perfiles Windows
 
 Trabajo realizado únicamente en `migration/windows-stage-1`, sobre el head

@@ -39,7 +39,7 @@ contra denegación de servicio del parser. No exponerla a entradas ilimitadas.
 | Elemento anterior | Problema y tratamiento actual |
 | --- | --- |
 | `resource` + `RLIMIT_AS`, `RLIMIT_FSIZE`, `RLIMIT_CORE` | POSIX; impedía importar en Windows. Se retiraron de la capa común. No se habían fijado límites de CPU. |
-| `preexec_fn` | No soportado en Windows; inseguro en procesos con threads. Ya no se usa. |
+| `preexec_fn` | No soportado en Windows; inseguro en procesos con threads. No se usa en el host; el supervisor experimental Linux lo usa solo dentro de la VM. |
 | `unshare -r -n true` | Namespaces Linux y herramienta `true`; solo probaba bloqueo de red. Su fallo abría un camino sin aislamiento. Eliminado el fallback. |
 | `start_new_session=True` | En POSIX cambia la sesión; no garantiza terminar descendientes ni representa el modelo de procesos Windows. No se usa como aislamiento. |
 | `HOME`, `TMPDIR`, `LANG`, `/usr/bin:/bin` | Suposiciones del entorno POSIX; no ofrecían aislamiento de archivos ni preparaban el entorno Windows del invitado. Ya no se fabrica un env host para ejecutar entradas. |
@@ -86,7 +86,11 @@ transferirla y nunca montarla como proyecto host escribible.
 
 ## Implementación prevista para Windows 11
 
-### Primera opción: VM Windows descartable
+El controlador experimental QEMU/WHPX, su alcance y validaciones pendientes se
+detallan en [QEMU_BACKEND.md](QEMU_BACKEND.md). Solo permite una sonda fija; no
+está registrado en la fábrica y no se ha arrancado una VM en esta entrega.
+
+### Primera opción para compatibilidad nativa: VM Windows descartable
 
 Usar una VM dedicada Hyper-V con imagen limpia de Python 3.11 x64 y herramientas
 preinstaladas, sin red ni credenciales, restaurada para cada trabajo. Un broker
@@ -109,7 +113,8 @@ Windows 11 Pro/Enterprise/Education, característica opcional Windows Sandbox y
 virtualización habilitadas; no está disponible de forma estándar en Home.
 Desactivar red, portapapeles, audio/video de entrada, impresoras y GPU compartida;
 usar solo entrada de staging de lectura, sin exponer archivos personales.
-Un `.wsb` y `LogonCommand` por sí solos no dan un protocolo fiable de resultado,
+Desde Windows 11 24H2 existe CLI de Windows Sandbox, pero `exec` no devuelve
+actualmente stdout del proceso. Un `.wsb` y `LogonCommand` por sí solos no dan un protocolo fiable de resultado,
 recursos y teardown. Hace falta diseñar y probar el broker y el canal de salida.
 No abrir una carpeta host escribible general para obtener resultados. No se ha
 implementado ni habilitado esta alternativa.
