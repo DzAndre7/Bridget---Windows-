@@ -75,6 +75,14 @@ Python se comprueba en las fuentes del proyecto, sin recorrer venvs. El workflow
 Windows con Python 3.11; un runner Windows de GitHub no equivale a una prueba
 manual en Windows 11. Su resultado debe revisarse después de publicar la rama.
 
+
+Validación adicional completada en GitHub Actions sobre el código del commit
+`ecc8b3a23cc05feedb9ff9dba3625285d7cbc376`: **110 pruebas aprobadas y Ruff aprobado
+por cada plataforma**, Ubuntu y Windows Server 2025 con Python 3.11.9 en Windows.
+Evidencia: https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39328304543.
+Esto confirma los rechazos y el contrato portable; no acredita virtualización ni
+la instalación completa de la aplicación en Windows 11.
+
 Se resolvieron **47 distribuciones** para el subconjunto base + voz mediante pip
 con destino CPython 3.11 `win_amd64`, `--dry-run` y `--only-binary=:all:`. No es una
 instalación nativa. Los ensayos binarios de API/escritorio no completaron porque
