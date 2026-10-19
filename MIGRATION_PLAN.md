@@ -66,7 +66,7 @@ Python se comprueba en las fuentes del proyecto, sin recorrer venvs. El workflow
 Windows con Python 3.11; un runner Windows de GitHub no equivale a una prueba
 manual en Windows 11. Su resultado debe revisarse después de publicar la rama.
 
-Se resolvieron **46 distribuciones** para el subconjunto base + voz mediante pip
+Se resolvieron **47 distribuciones** para el subconjunto base + voz mediante pip
 con destino CPython 3.11 `win_amd64`, `--dry-run` y `--only-binary=:all:`. No es una
 instalación nativa. Los ensayos binarios de API/escritorio no completaron porque
 `http-ece` y PyAutoGUI requieren distribuciones fuente. No se ocultó ese límite:

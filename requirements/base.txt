@@ -6,3 +6,5 @@ python-dotenv>=1.2,<2
 numpy==1.26.4
 ddgs>=9,<10
 groq>=0.31,<2
+# La auto-mejora necesita el linter también fuera del entorno de pruebas.
+ruff==0.14.1
