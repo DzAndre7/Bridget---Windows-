@@ -23,5 +23,6 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r requirements/test.txt
-      - run: python -m pytest -c pytest-safety.ini -q
+      - run: python -m pytest -c pytest-safety.ini -q --durations=10
+        timeout-minutes: 3
       - run: python -m ruff check asistente_v2/core/sandbox.py asistente_v2/core/sandbox_backends asistente_v2/core/auto_mejora.py asistente_v2/tests/test_sandbox.py asistente_v2/tests/test_sandbox_security.py asistente_v2/tests/test_requirements_windows.py asistente_v2/tests/test_voice_device.py

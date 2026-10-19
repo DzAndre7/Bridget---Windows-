@@ -50,7 +50,10 @@ def test_sintaxis_invalida():
     assert "Línea" in sandbox.verificar_sintaxis("def rota(:")[1]
 
 
-@pytest.mark.parametrize("codigo", [None, "x\x00", "x" * (sandbox.LIMITE_ARCHIVO + 1)])
+@pytest.mark.parametrize(
+    "codigo", [None, "x\x00", "x" * (sandbox.LIMITE_ARCHIVO + 1)],
+    ids=["no_texto", "byte_nulo", "supera_limite"],
+)
 def test_sintaxis_rechaza_entradas_invalidas(codigo):
     assert sandbox.verificar_sintaxis(codigo)[0] is False
 
