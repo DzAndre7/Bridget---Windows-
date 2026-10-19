@@ -1,0 +1,5 @@
+PyAutoGUI==0.9.54
+pywebview>=6,<7
+pillow>=11,<13
+# PyAutoGUI declara sus propias dependencias por plataforma. No fijar Xlib/Qt
+# ni instalar python3-xlib en Windows. WebView2 es un prerrequisito externo.

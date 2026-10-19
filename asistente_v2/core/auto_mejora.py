@@ -26,15 +26,29 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 
 from core import sandbox
-from core.code_reviewer import revisar_codigo
 
 RUTA_PROYECTO = sandbox.RUTA_PROYECTO
 
 # Solo se auto-mejora el código propio y activo: nada de tests, legacy ni interfaz web
 CARPETAS_CANDIDATAS = ("core", "actions")
+
+
+def revisar_codigo(*args, **kwargs):
+    # No cargar SDKs ni configuración externa para consultar el bloqueo seguro.
+    from core.code_reviewer import revisar_codigo as revisar
+    return revisar(*args, **kwargs)
+
+
+def _rechazo_aislamiento():
+    estado = sandbox.estado_aislamiento()
+    if not estado.disponible:
+        return {"exito": False, "etapa": "aislamiento_no_disponible",
+                "motivo": estado.motivo, "intentos": 0}
+    return None
 
 
 def _dir_mejoras(ruta_proyecto=None, estado="pendientes"):
@@ -63,15 +77,14 @@ def _lint_ruff(codigo, rel):
     usaba `urllib` sin importarlo)."""
     try:
         resultado = subprocess.run(
-            ["ruff", "check", "--quiet", "--select", "F821,F401,F811",
+            [sys.executable, "-m", "ruff", "check", "--quiet", "--select", "F821,F401,F811",
              "--stdin-filename", rel, "-"],
             input=codigo, capture_output=True, text=True, timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        # sin ruff instalado no bloqueamos la propuesta por esto: el sandbox
-        # sigue siendo la validación real
-        return {"exito": True, "salida": ""}
-    return {"exito": resultado.returncode == 0, "salida": resultado.stdout}
+        return {"exito": False, "salida": "No se pudo completar la revisión estática con Ruff."}
+    return {"exito": resultado.returncode == 0,
+            "salida": resultado.stdout or resultado.stderr}
 
 
 def elegir_archivo(ruta_proyecto=None):
@@ -105,6 +118,9 @@ def proponer_mejora(ruta_archivo, funcion_llm, ruta_proyecto=None, max_intentos=
     acepta si la suite entera pasa en el sandbox. Devuelve un dict con
     exito/motivo y, si salió bien, el id de la propuesta y su diff.
     El archivo real nunca se modifica acá."""
+    rechazo = _rechazo_aislamiento()
+    if rechazo:
+        return rechazo
     base = os.path.abspath(ruta_proyecto or RUTA_PROYECTO)
     absoluta = os.path.abspath(
         ruta_archivo if os.path.isabs(ruta_archivo)
@@ -170,6 +186,9 @@ def proponer_mejora(ruta_archivo, funcion_llm, ruta_proyecto=None, max_intentos=
             continue
 
         prueba = sandbox.probar_cambio_en_proyecto(rel, codigo, ruta_proyecto=base)
+        if prueba["etapa"] == "aislamiento_no_disponible":
+            return {"exito": False, "etapa": prueba["etapa"],
+                    "motivo": prueba["errores"], "archivo": rel, "intentos": intento}
         if prueba["exito"]:
             id_mejora, ruta_diff, diff = _guardar_propuesta(
                 rel, original, codigo, revision, ruta_proyecto=base
@@ -259,6 +278,9 @@ def aplicar_mejora(id_mejora, ruta_proyecto=None):
     - si el archivo cambió desde que se propuso (hash distinto), se niega;
     - re-corre la suite en el sandbox por si el resto del proyecto cambió.
     Si todo pasa, escribe y archiva la propuesta en mejoras_aplicadas/."""
+    rechazo = _rechazo_aislamiento()
+    if rechazo:
+        return rechazo
     base = os.path.abspath(ruta_proyecto or RUTA_PROYECTO)
     carpeta = _dir_mejoras(base)
 

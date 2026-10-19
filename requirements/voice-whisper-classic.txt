@@ -1,0 +1,2 @@
+# Respaldo clásico conservado, opcional. Requiere ffmpeg y PyTorch adecuados.
+openai-whisper==20250625

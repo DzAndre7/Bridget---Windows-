@@ -56,6 +56,7 @@ from core.sandbox import (
     crear_y_probar, guardar_codigo_validado, verificar_sintaxis,
     extraer_codigo,
 )
+from core.sandbox import estado_aislamiento
 from core import auto_mejora
 from core import agenda
 from core import pensador
@@ -485,11 +486,17 @@ def _cmd_auditar_codigo(texto, texto_original, sesion, assistant_name):
 
 
 def _cmd_crear_y_probar_codigo(texto, texto_original, sesion, assistant_name):
+    estado = estado_aislamiento()
+    if not estado.disponible:
+        return estado.motivo
     print("Creando código y probándolo en el sandbox (puede tomar varias vueltas)...")
     resultado = crear_y_probar(texto_original, lambda p: consultar_llama(p, sesion))
 
     if resultado["exito"]:
-        ruta = guardar_codigo_validado(resultado["codigo"], descripcion=texto_original)
+        try:
+            ruta = guardar_codigo_validado(resultado["codigo"], descripcion=texto_original)
+        except RuntimeError as error:
+            return f"No guardé código sin validación aislada: {error}"
         salida = resultado["resultado"]["salida"].strip() or "(sin salida)"
         return (
             f"Listo: el código pasó sus pruebas en el sandbox al intento "
@@ -505,6 +512,9 @@ def _cmd_crear_y_probar_codigo(texto, texto_original, sesion, assistant_name):
 
 
 def _cmd_probar_proyecto_sandbox(texto, texto_original, sesion, assistant_name):
+    estado = estado_aislamiento()
+    if not estado.disponible:
+        return estado.motivo
     print("Copiando el proyecto a un sandbox y corriendo mis pruebas ahí...")
     resultado = probar_proyecto()
 
@@ -519,6 +529,9 @@ def _cmd_probar_proyecto_sandbox(texto, texto_original, sesion, assistant_name):
 
 
 def _cmd_probar_codigo_sandbox(texto, texto_original, sesion, assistant_name):
+    estado = estado_aislamiento()
+    if not estado.disponible:
+        return estado.motivo
     rutas = re.findall(r'[~/][\w/\.\-]+', texto_original)
     if rutas:
         ruta = os.path.expanduser(rutas[0])
@@ -545,6 +558,9 @@ def _cmd_probar_codigo_sandbox(texto, texto_original, sesion, assistant_name):
 
 
 def _cmd_auto_mejora(texto, texto_original, sesion, assistant_name):
+    estado = estado_aislamiento()
+    if not estado.disponible:
+        return estado.motivo
     # ¿pidió un archivo puntual, o elegimos nosotros?
     rutas = re.findall(r'[~/\w][\w/\.\-]*\.py', texto_original)
     if rutas:
@@ -639,6 +655,9 @@ def _cmd_mejorar_codigo(texto, texto_original, sesion, assistant_name):
         return "Revisá el código mejorado arriba."
 
     ruta = os.path.expanduser(rutas[0])
+    estado = estado_aislamiento()
+    if not estado.disponible:
+        return estado.motivo
     contenido = leer_archivo(ruta)
     if not contenido:
         return f"No pude leer {ruta}."
@@ -673,6 +692,9 @@ def _cmd_mejorar_codigo(texto, texto_original, sesion, assistant_name):
             f"Sandbox: OJO, esta versión ROMPE el proyecto (etapa: {prueba['etapa']}):\n"
             f"{prueba['salida'][-1200:]}\n{prueba['errores'][-400:]}"
         )
+
+    if not prueba["exito"]:
+        return "No guardé la propuesta: requiere pruebas aprobadas dentro de un aislamiento seguro."
 
     confirmacion = input("¿Querés guardar la versión de dolphin? (si/no): ")
     if confirmacion.strip().lower() in ["si", "sí", "s", "yes"]:

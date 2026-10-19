@@ -1,0 +1,2 @@
+weasyprint>=65,<70
+# Pandoc y bibliotecas nativas de WeasyPrint se instalan fuera de pip.

@@ -8,6 +8,7 @@ import textwrap
 import pytest
 
 from core import auto_mejora
+from core.sandbox_backends import EstadoBackend
 
 
 MODULO_ORIGINAL = textwrap.dedent("""
@@ -65,6 +66,13 @@ def proyecto(tmp_path, monkeypatch):
             assert sumar(2, 3) == 5
     """), encoding="utf-8")
 
+    # Solo se prueban decisiones y persistencia: ninguna propuesta se ejecuta.
+    monkeypatch.setattr(auto_mejora.sandbox, "estado_aislamiento", lambda: EstadoBackend(
+        "doble_de_prueba", archivos_aislados=True, red_bloqueada=True,
+        recursos_limitados=True, procesos_controlados=True, entorno_sin_secretos=True,
+    ))
+    monkeypatch.setattr(auto_mejora.sandbox, "probar_cambio_en_proyecto",
+                        lambda *a, **k: {"exito": True, "etapa": "ok"})
     # sin Groq en los tests: la propuesta se genera sin guía externa
     monkeypatch.setattr(auto_mejora, "revisar_codigo", lambda *a, **k: None)
     return tmp_path
@@ -75,7 +83,7 @@ def test_proponer_mejora_buena_queda_pendiente_sin_tocar_el_original(proyecto):
         "core/modulo.py", lambda p: MODULO_MEJORADO, ruta_proyecto=str(proyecto)
     )
     assert resultado["exito"], resultado
-    assert resultado["archivo"] == "core/modulo.py"
+    assert resultado["archivo"] == os.path.join("core", "modulo.py")
     assert "resultado = a + b" in resultado["diff"]  # el diff refleja el cambio
 
     # regla de oro: el archivo real sigue intacto
@@ -88,7 +96,9 @@ def test_proponer_mejora_buena_queda_pendiente_sin_tocar_el_original(proyecto):
     assert mejoras[0]["id"] == resultado["id"]
 
 
-def test_propuesta_que_rompe_las_pruebas_se_rechaza(proyecto):
+def test_propuesta_que_rompe_las_pruebas_se_rechaza(proyecto, monkeypatch):
+    monkeypatch.setattr(auto_mejora.sandbox, "probar_cambio_en_proyecto",
+                        lambda *a, **k: {"exito": False, "etapa": "pruebas", "salida": "fallo simulado", "errores": ""})
     resultado = auto_mejora.proponer_mejora(
         "core/modulo.py", lambda p: MODULO_ROTO,
         ruta_proyecto=str(proyecto), max_intentos=1,

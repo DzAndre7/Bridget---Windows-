@@ -648,5 +648,6 @@
       "source_mode": "100755",
       "status": "sanitized"
     }
-  ]
+  ],
+  "inventory_scope": "Instantánea del traslado inicial (PR #1, 0c717522692ccc20dbc66a40757eee68b7b9c612). Los estados copied_identical/sanitized y source_blob_sha documentan ese traslado y su procedencia, no los hashes actuales tras el desarrollo posterior."
 }

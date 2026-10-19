@@ -21,7 +21,8 @@ from core import memory, preferences
 
 class StaticChecks(unittest.TestCase):
     def test_python_syntax(self):
-        for path in sorted(ROOT.rglob("*.py")):
+        fuentes = (ROOT / "asistente_v2", ROOT / "migration_checks")
+        for path in sorted(p for fuente in fuentes for p in fuente.rglob("*.py")):
             with self.subTest(path=str(path.relative_to(ROOT))):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 

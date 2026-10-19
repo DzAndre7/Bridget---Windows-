@@ -1,0 +1,5 @@
+sounddevice>=0.5,<0.6
+scipy==1.13.1
+faster-whisper==1.2.1
+# Provee el mismo import 'webrtcvad', con wheels Windows. No instalar ambos.
+webrtcvad-wheels==2.0.14

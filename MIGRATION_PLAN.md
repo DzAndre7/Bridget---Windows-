@@ -1,5 +1,109 @@
 # Migración y estabilización de Bridget para Windows 10/11
 
+## Actualización: cierre seguro del sandbox y perfiles Windows
+
+Trabajo realizado únicamente en `migration/windows-stage-1`, sobre el head
+`0c717522692ccc20dbc66a40757eee68b7b9c612`, para actualizar el PR #1.
+El original y `main` no son destinos de escritura.
+
+### Estado actual
+
+- **Resuelto:** la capa común del sandbox no importa `resource` ni usa
+  `preexec_fn`, `unshare`, variables X11/Wayland ni intérpretes host para ejecutar
+  entradas. Se conserva la API y se separa el contrato de backend por plataforma.
+- **Resuelto:** código no confiable, tests, `conftest` y propuestas no se ejecutan
+  cuando no existe aislamiento acreditado. El resultado distingue
+  `aislamiento_no_disponible` de errores del programa. No hay fallback inseguro,
+  bandera de entorno para permitirlo ni excepción por tratarse del propio código.
+- **Resuelto:** auto-mejora comprueba aislamiento antes de consultar el modelo o
+  el revisor y antes de aplicar propuestas. La reescritura antigua tampoco
+  permite guardar código tras fallar la validación. El guardado de código
+  validado vuelve a comprobarlo antes de etiquetarlo como probado.
+- **Resuelto:** las copias para futuras pruebas excluyen secretos/estado,
+  restringen tipos y tamaño, y rechazan rutas fuera del proyecto, symlinks,
+  hardlinks y reparse points/junctions. No son una barrera de seguridad por sí
+  mismas y un backend futuro deberá cerrar carreras de cambios al transferirlas.
+- **Adaptado:** perfiles de dependencias por capacidad y plataforma. El freeze
+  Linux original se conserva íntegro como referencia, fuera de la instalación
+  por defecto. Se añaden push/STT ausentes, wheels VAD y Coqui mantenido con la
+  misma API. TTS local selecciona CPU cuando no hay CUDA. Ruff se invoca mediante
+  el mismo intérprete, sin depender del PATH de Scripts en Windows.
+- **Pendiente explícito:** no se ha implementado ni habilitado un motor de
+  ejecución de producción. Actualmente todas las plataformas rechazan ejecución
+  dinámica. Se diseñó la integración sobre VM Windows/Windows Sandbox y la
+  alternativa Docker dentro de una VM verificada. No se declara seguro un
+  runtime por estar instalado. Las capacidades de sandbox/auto-mejora conservan
+  sus APIs, pero requieren completar y verificar ese backend para ejecutarse.
+
+El diseño, modelo de amenaza y todas las dependencias Linux identificadas están
+en `docs/SANDBOX.md`. Los perfiles, prerrequisitos e instrucciones de validación
+están en `docs/DEPENDENCIES_WINDOWS.md`.
+
+### Evidencia de esta actualización
+
+En Codex/Linux, Python 3.12.14:
+
+```text
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c pytest-safety.ini -q
+```
+
+Resultado: **105 pruebas aprobadas**, incluidas las 15 comprobaciones anteriores.
+Se prueban rechazo sin backend, garantías incompletas, errores y pérdida del
+runtime, prohibición de habilitar red, entradas y límites, rechazo de resultados
+sin prueba de aislamiento/limpieza, rutas y copias, protección de archivos
+originales, parada de reintentos/LLM y bloqueo de aplicación de mejoras.
+
+Los casos que representan resultados de ejecución usan un doble que NO ejecuta
+las entradas. Solo lee el staging y devuelve resultados prefijados. Los handlers
+y la selección TTS se prueban cargando definiciones revisadas sin importar el
+escritorio, cargar modelos ni inicializar voz. No se ejecutó código generado,
+ni snippets, ni pruebas de proyectos recibidos. Ruff analiza estáticamente texto
+revisado: no se trata como sandbox ni como prueba dinámica.
+
+Ruff pasó en los módulos de sandbox/auto-mejora y las pruebas nuevas. La sintaxis
+Python se comprueba en las fuentes del proyecto, sin recorrer venvs. El workflow
+`.github/workflows/safety-tests.yml` ejecuta ese mismo subconjunto en Ubuntu y
+Windows con Python 3.11; un runner Windows de GitHub no equivale a una prueba
+manual en Windows 11. Su resultado debe revisarse después de publicar la rama.
+
+Se resolvieron **46 distribuciones** para el subconjunto base + voz mediante pip
+con destino CPython 3.11 `win_amd64`, `--dry-run` y `--only-binary=:all:`. No es una
+instalación nativa. Los ensayos binarios de API/escritorio no completaron porque
+`http-ece` y PyAutoGUI requieren distribuciones fuente. No se ocultó ese límite:
+la construcción/instalación completa, Coqui y CPU/CUDA quedan por validar en
+Windows. No hay todavía un lock completo de ese perfil.
+
+### Orden de trabajo restante
+
+1. Implementar y validar el broker/VM de `docs/SANDBOX.md`: no reactivar ejecución
+   antes de demostrar aislamiento de archivos/red, límites y destrucción completa.
+2. En Windows 11 x64/Python 3.11 limpio: instalar perfiles CPU, ejecutar
+   `pip check`, revisar imports y correr `pytest-safety.ini`; comprobar rutas con
+   espacios/Unicode, unidades distintas, UNC y junctions/reparse points reales.
+3. Probar la integración de VM con cargas benignas en una VM de ensayo:
+   red/archivos host inaccesibles, imagen limpia, falta de secretos, límites,
+   salida acotada, cancelación, timeout, procesos descendientes y fallo cerrado
+   al perder el runtime. Después probar snippets, suite y propuestas completas.
+4. Validar Coqui/faster-whisper y las bibliotecas nativas en Windows sin GPU, y
+   después un perfil CUDA coherente. Generar locks con hashes tras esa validación.
+5. Seguir con los P1 de la primera entrega: `/tmp`, `paplay`, `notify-send`,
+   apertura de apps, `shell=True`/FAILSAFE, parsing de rutas, ciclo de vida API,
+   persistencia concurrente y seguridad de exposición remota. No fueron
+   corregidos ni declarados seguros por esta actualización.
+6. Completar la portada pendiente y la matriz final Windows 10/11 antes de
+   considerar la migración estable. No fusionar este PR como versión estable.
+
+`MIGRATION_INVENTORY.json` documenta la instantánea del traslado inicial; sus
+hashes y estados no representan los cambios posteriores de desarrollo.
+
+---
+
+## Registro de la primera entrega (histórico)
+
+Los hallazgos y conteos siguientes corresponden al traslado inicial. El estado
+actual y las correcciones de sandbox/dependencias se describen arriba.
+
+
 ## Estado de esta entrega
 
 Primera etapa: copia del código con saneamiento de datos, inventario y diagnóstico.

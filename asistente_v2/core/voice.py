@@ -53,7 +53,9 @@ def _cargar_coqui():
     if _tts_local is None:
         from TTS.api import TTS
         with silenciar_salida():
-            _tts_local = TTS(model_name="tts_models/es/css10/vits", progress_bar=False).to("cuda")
+            import torch
+            dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
+            _tts_local = TTS(model_name="tts_models/es/css10/vits", progress_bar=False).to(dispositivo)
     return _tts_local
 
 def _generar_google(texto, salida):

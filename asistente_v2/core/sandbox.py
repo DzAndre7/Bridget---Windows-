@@ -1,353 +1,263 @@
+"""API portable de sandbox. Sin backend validado, toda ejecución se rechaza.
+
+Compilar sintaxis no ejecuta el programa. Copiar archivos y crear procesos no
+son barreras de seguridad. Las entradas del usuario, del modelo y los tests
+(incluidos conftest y cambios propios) tienen la misma política de aislamiento.
 """
-Sandbox: entorno controlado donde Bridget puede crear, ejecutar y probar
-código sin riesgo para el sistema ni para su propio código fuente.
-
-Niveles de aislamiento, de adentro hacia afuera:
-1. Proceso separado: nada se ejecuta dentro del proceso del asistente.
-2. Directorio temporal descartable: el código corre con cwd y HOME en una
-   carpeta que se borra al terminar. No ve el proyecto real.
-3. Límites de recursos (CPU, memoria, tamaño de archivos que puede crear).
-4. Sin acceso a la red (si el sistema soporta `unshare`, que en Arch sí).
-
-Regla de oro: el código del proyecto NUNCA se prueba en vivo. Para probar
-un cambio, se copia asistente_v2 completo a una carpeta temporal, se aplica
-el cambio en la COPIA y se corre pytest ahí. El original no se toca.
-
-Los snippets arbitrarios (código generado por el LLM o pegado por el
-usuario) corren con red bloqueada y límites estrictos. Las pruebas del
-propio proyecto corren con red habilitada (son código de confianza y
-algunos módulos esperan poder hablar con Ollama local), pero siempre
-sobre la copia temporal.
-"""
-
-import functools
 import os
 import re
-import resource
 import shutil
-import subprocess
-import sys
+import stat
 import tempfile
 from datetime import datetime
+from pathlib import Path
 
 from config import ASSISTANT_NAME
+from core.sandbox_backends import EstadoBackend, ResultadoBackend, SolicitudEjecucion, obtener_backend
 
-# asistente_v2/ (la carpeta raíz del código del asistente)
 RUTA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Acá se guardan los scripts que Bridget creó y que pasaron sus pruebas
 WORKSPACE = os.path.join(RUTA_PROYECTO, "sandbox_workspace")
+TIMEOUT_SNIPPET = 15
+TIMEOUT_PRUEBAS = 300
+LIMITE_MEMORIA = 2 * 1024 ** 3
+LIMITE_ARCHIVO = 10 * 1024 ** 2
+LIMITE_SALIDA = 8000
+LIMITE_COPIA = 10 * 1024 ** 2
+LIMITE_ARCHIVOS = 500
+LIMITE_PROCESOS = 32
 
-TIMEOUT_SNIPPET = 15      # segundos para un script suelto
-TIMEOUT_PRUEBAS = 300     # segundos para la suite completa del proyecto
-LIMITE_MEMORIA = 2 * 1024 ** 3   # 2 GB de memoria virtual
-LIMITE_ARCHIVO = 10 * 1024 ** 2  # 10 MB máximo por archivo creado
-LIMITE_SALIDA = 8000      # caracteres de stdout/stderr que conservamos
+_OMITIR = {
+    "__pycache__", ".pytest_cache", ".git", ".venv", "venv", "venv311", "env",
+    "reports", "inbox", "sandbox_workspace", "sesiones", "assets", "node_modules",
+    "mejoras_pendientes", "mejoras_aplicadas", "mejoras_descartadas",
+}
+# Solo código y recursos necesarios para las pruebas; no snapshots de datos.
+_EXTENSIONES = {".py", ".html", ".css", ".js", ".png"}
+_RECURSOS = {"context.md", "config_presencia.json", "manifest.json"}
 
-# Qué NO copiar al clonar el proyecto para probarlo (caches y datos pesados)
-_IGNORAR_EN_COPIA = shutil.ignore_patterns(
-    "__pycache__", ".pytest_cache", "*.pyc", ".git",
-    "reports", "inbox", "sandbox_workspace", "venv", "venv311",
-    "sesiones", "mejoras_pendientes", "mejoras_aplicadas", "mejoras_descartadas",
-)
+
+def _fallo(etapa, mensaje):
+    return {"exito": False, "etapa": etapa, "salida": "",
+            "errores": mensaje, "codigo_retorno": -1}
+
+
+def estado_aislamiento():
+    """Consulta sin iniciar runtimes, red, modelos ni procesos."""
+    try:
+        estado = obtener_backend().estado()
+        if isinstance(estado, EstadoBackend):
+            return estado
+    except Exception:
+        pass
+    return EstadoBackend("no_disponible", "No se pudo verificar el aislamiento; no se ejecutó código.")
+
+
+def _comprobar_backend(backend):
+    try:
+        estado = backend.estado()
+        if not isinstance(estado, EstadoBackend) or not estado.disponible:
+            return _fallo("aislamiento_no_disponible", getattr(estado, "motivo", "") or
+                          "El backend no acredita todas las garantías de aislamiento.")
+    except Exception:
+        return _fallo("aislamiento_no_disponible", "No se pudo verificar el aislamiento; no se ejecutó código.")
+    return None
 
 
 def _recortar(texto, limite=LIMITE_SALIDA):
-    """Conserva el final del texto, que es donde suele estar el error útil."""
-    if texto and len(texto) > limite:
-        return "(...salida recortada...)\n" + texto[-limite:]
-    return texto or ""
-
-
-def _aplicar_limites():
-    """Corre en el hijo justo antes de exec: pone límites de recursos.
-    Si algún límite no se puede aplicar (hard limit del sistema más bajo),
-    seguimos igual: preferimos ejecutar con menos límites a no ejecutar."""
-    for recurso, valor in [
-        (resource.RLIMIT_AS, LIMITE_MEMORIA),
-        (resource.RLIMIT_FSIZE, LIMITE_ARCHIVO),
-        (resource.RLIMIT_CORE, 0),
-    ]:
-        try:
-            resource.setrlimit(recurso, (valor, valor))
-        except (ValueError, OSError):
-            pass
-
-
-@functools.lru_cache(maxsize=1)
-def _puede_bloquear_red():
-    """True si `unshare -r -n` funciona en este sistema (namespaces de
-    usuario sin privilegios). Se prueba una sola vez por sesión."""
-    try:
-        prueba = subprocess.run(
-            ["unshare", "-r", "-n", "true"],
-            capture_output=True, timeout=5,
-        )
-        return prueba.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-
-
-def _entorno_minimo(carpeta, con_display=False):
-    """Entorno de ejecución reducido: HOME apunta a la carpeta temporal,
-    así el código probado no puede ensuciar el home real por descuido.
-
-    `con_display` pasa las variables de la sesión gráfica: hace falta para
-    la suite del propio proyecto (pyautogui exige DISPLAY al importarse),
-    pero a los snippets arbitrarios se las negamos a propósito, para que
-    código desconocido no pueda controlar mouse/teclado/pantalla."""
-    entorno = {
-        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "HOME": carpeta,
-        "TMPDIR": carpeta,
-        "LANG": os.environ.get("LANG", "C.UTF-8"),
-        "PYTHONIOENCODING": "utf-8",
-        "PYTHONDONTWRITEBYTECODE": "1",
-    }
-    if con_display:
-        for variable in ["DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR"]:
-            if variable in os.environ:
-                entorno[variable] = os.environ[variable]
-    return entorno
-
-
-def _ejecutar_aislado(comando, carpeta, timeout, bloquear_red=True,
-                      con_display=False):
-    """Corre `comando` dentro de `carpeta` con límites y (si se puede) sin
-    red. Devuelve un dict crudo con salida, errores y código de retorno."""
-    if bloquear_red and _puede_bloquear_red():
-        comando = ["unshare", "-r", "-n"] + comando
-
-    try:
-        proceso = subprocess.run(
-            comando,
-            cwd=carpeta,
-            env=_entorno_minimo(carpeta, con_display),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            preexec_fn=_aplicar_limites,
-            start_new_session=True,
-        )
-        return {
-            "salida": _recortar(proceso.stdout),
-            "errores": _recortar(proceso.stderr),
-            "codigo_retorno": proceso.returncode,
-            "timeout": False,
-        }
-    except subprocess.TimeoutExpired as e:
-        return {
-            "salida": _recortar(e.stdout.decode("utf-8", "replace") if e.stdout else ""),
-            "errores": f"El código superó el límite de {timeout} segundos y fue cortado.",
-            "codigo_retorno": -1,
-            "timeout": True,
-        }
+    return (texto or "")[:limite]
 
 
 def verificar_sintaxis(codigo):
-    """Chequeo barato antes de ejecutar nada.
-    Devuelve (True, None) o (False, descripción del error)."""
+    """Solo compila: nunca importa módulos ni evalúa el código recibido."""
+    if not isinstance(codigo, str) or len(codigo) > LIMITE_ARCHIVO:
+        return False, "El código debe ser texto de tamaño limitado."
     try:
         compile(codigo, "<sandbox>", "exec")
         return True, None
-    except SyntaxError as e:
-        return False, f"Línea {e.lineno}: {e.msg}"
+    except (SyntaxError, ValueError, RecursionError, MemoryError) as error:
+        if isinstance(error, SyntaxError):
+            return False, f"Línea {error.lineno}: {error.msg}"
+        return False, f"Código inválido: {type(error).__name__}"
 
 
 def extraer_codigo(respuesta):
-    """Saca el código de una respuesta de LLM: si viene entre fences
-    markdown (```python ... ```) devuelve el primer bloque; si no,
-    devuelve el texto tal cual."""
     bloque = re.search(r"```(?:python)?\s*\n(.*?)```", respuesta, re.DOTALL)
-    if bloque:
-        return bloque.group(1).strip()
-    return respuesta.strip()
+    return bloque.group(1).strip() if bloque else respuesta.strip()
+
+
+def _ejecutar(backend, carpeta, timeout, operacion, etapa_error):
+    # Se vuelve a comprobar justo antes de despachar: no se confía en un cache.
+    rechazo = _comprobar_backend(backend)
+    if rechazo:
+        return rechazo
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= TIMEOUT_PRUEBAS:
+        return _fallo("solicitud_invalida", "El timeout debe ser un entero entre 1 y 300 segundos.")
+    solicitud = SolicitudEjecucion(
+        operacion=operacion, carpeta_entrada=Path(carpeta), timeout=timeout,
+        limite_cpu=timeout, limite_procesos=LIMITE_PROCESOS,
+        limite_memoria=LIMITE_MEMORIA, limite_archivo=LIMITE_ARCHIVO,
+        limite_salida=LIMITE_SALIDA,
+    )
+    try:
+        resultado = backend.ejecutar(solicitud)
+    except Exception:
+        return _fallo("aislamiento_no_disponible", "El backend falló; no se considera validado el código.")
+    if not isinstance(resultado, ResultadoBackend) or not (
+        resultado.aislamiento_verificado is True and resultado.limpieza_verificada is True
+        and type(resultado.codigo_retorno) is int and type(resultado.timeout) is bool
+        and isinstance(resultado.salida, str) and isinstance(resultado.errores, str)
+    ):
+        return _fallo("aislamiento_no_disponible", "El backend no acreditó aislamiento y limpieza completos.")
+    etapa = "timeout" if resultado.timeout else (
+        "ok" if resultado.codigo_retorno == 0 else etapa_error
+    )
+    return {"exito": etapa == "ok", "etapa": etapa,
+            "salida": _recortar(resultado.salida), "errores": _recortar(resultado.errores),
+            "codigo_retorno": resultado.codigo_retorno}
 
 
 def ejecutar_codigo(codigo, timeout=TIMEOUT_SNIPPET, bloquear_red=True):
-    """Ejecuta un script Python suelto en el sandbox.
-    Devuelve un dict con:
-      exito: True si terminó sin error
-      etapa: 'sintaxis' | 'ejecucion' | 'timeout' | 'ok'
-      salida / errores / codigo_retorno
-    """
     ok, error = verificar_sintaxis(codigo)
     if not ok:
-        return {
-            "exito": False, "etapa": "sintaxis",
-            "salida": "", "errores": f"Error de sintaxis: {error}",
-            "codigo_retorno": -1,
-        }
-
+        return _fallo("sintaxis", error)
+    # Se conserva el parámetro por compatibilidad, pero ya no permite relajar red.
+    if bloquear_red is not True:
+        return _fallo("politica_aislamiento", "No se permite ejecutar código con red habilitada.")
+    backend = obtener_backend()
+    rechazo = _comprobar_backend(backend)
+    if rechazo:
+        return rechazo
     with tempfile.TemporaryDirectory(prefix="bridget_sandbox_") as carpeta:
-        ruta = os.path.join(carpeta, "codigo.py")
-        with open(ruta, "w", encoding="utf-8") as f:
-            f.write(codigo)
-
-        crudo = _ejecutar_aislado(
-            [sys.executable, ruta], carpeta, timeout, bloquear_red
-        )
-
-    if crudo["timeout"]:
-        etapa = "timeout"
-    elif crudo["codigo_retorno"] != 0:
-        etapa = "ejecucion"
-    else:
-        etapa = "ok"
-
-    return {
-        "exito": etapa == "ok",
-        "etapa": etapa,
-        "salida": crudo["salida"],
-        "errores": crudo["errores"],
-        "codigo_retorno": crudo["codigo_retorno"],
-    }
+        Path(carpeta, "codigo.py").write_text(codigo, encoding="utf-8")
+        return _ejecutar(backend, carpeta, timeout, "script", "ejecucion")
 
 
 def probar_codigo(codigo, pruebas, timeout=60):
-    """Ejecuta `pruebas` (tests de pytest) contra `codigo` en el sandbox.
-    El código queda como `solucion.py`, así que las pruebas deben importar
-    `from solucion import ...`. Devuelve el mismo dict que ejecutar_codigo."""
     for nombre, fuente in [("código", codigo), ("pruebas", pruebas)]:
         ok, error = verificar_sintaxis(fuente)
         if not ok:
-            return {
-                "exito": False, "etapa": "sintaxis",
-                "salida": "", "errores": f"Error de sintaxis en {nombre}: {error}",
-                "codigo_retorno": -1,
-            }
-
+            return _fallo("sintaxis", f"Error de sintaxis en {nombre}: {error}")
+    backend = obtener_backend()
+    rechazo = _comprobar_backend(backend)
+    if rechazo:
+        return rechazo
     with tempfile.TemporaryDirectory(prefix="bridget_sandbox_") as carpeta:
-        with open(os.path.join(carpeta, "solucion.py"), "w", encoding="utf-8") as f:
-            f.write(codigo)
-        with open(os.path.join(carpeta, "test_solucion.py"), "w", encoding="utf-8") as f:
-            f.write(pruebas)
-
-        crudo = _ejecutar_aislado(
-            [sys.executable, "-m", "pytest", "-q", "test_solucion.py"],
-            carpeta, timeout, bloquear_red=True,
-        )
-
-    if crudo["timeout"]:
-        etapa = "timeout"
-    elif crudo["codigo_retorno"] != 0:
-        etapa = "pruebas"
-    else:
-        etapa = "ok"
-
-    return {
-        "exito": etapa == "ok",
-        "etapa": etapa,
-        "salida": crudo["salida"],
-        "errores": crudo["errores"],
-        "codigo_retorno": crudo["codigo_retorno"],
-    }
+        Path(carpeta, "solucion.py").write_text(codigo, encoding="utf-8")
+        Path(carpeta, "test_solucion.py").write_text(pruebas, encoding="utf-8")
+        return _ejecutar(backend, carpeta, timeout, "pytest", "pruebas")
 
 
-def _copiar_proyecto(origen, destino):
-    """Clona el proyecto (sin caches ni datos pesados) para probar sobre
-    la copia. Devuelve la ruta de la copia."""
-    copia = os.path.join(destino, "proyecto")
-    shutil.copytree(origen, copia, ignore=_IGNORAR_EN_COPIA)
-    return copia
-
-
-def _correr_suite(copia, timeout):
-    """Corre pytest en la copia del proyecto. Si existe tests/, corre solo
-    esa carpeta (los test_*.py sueltos en la raíz son experimentos viejos
-    que pueden necesitar servicios externos)."""
-    argumentos = [sys.executable, "-m", "pytest", "-q"]
-    if os.path.isdir(os.path.join(copia, "tests")):
-        argumentos.append("tests")
-    # Red y sesión gráfica habilitadas: es la suite del propio proyecto
-    # (código de confianza) corriendo sobre la copia, y sus imports
-    # (pyautogui) exigen DISPLAY aunque los tests no muevan el mouse.
-    return _ejecutar_aislado(
-        argumentos, copia, timeout, bloquear_red=False, con_display=True
+def _es_enlace(ruta):
+    datos = ruta.lstat()
+    return stat.S_ISLNK(datos.st_mode) or bool(
+        getattr(datos, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
     )
 
 
+def _ruta_proyecto(origen, archivo):
+    """Comprueba pertenencia real, incluyendo enlaces/junctions y otra unidad."""
+    if _es_enlace(Path(origen)):
+        raise ValueError("El origen no puede ser un enlace ni junction.")
+    base = Path(origen).resolve(strict=True)
+    ruta = Path(archivo)
+    candidata = ruta if ruta.is_absolute() else base / ruta
+    # No aceptar destinos a través de symlinks aunque apunten dentro del proyecto.
+    # Se rechazan otras unidades/UNC léxicamente antes de resolver o consultar.
+    sin_resolver = candidata.relative_to(base)
+    actual = base
+    for parte in sin_resolver.parts:
+        if parte == "..":
+            raise ValueError("La ruta no debe contener '..'.")
+        actual = actual / parte
+        try:
+            es_enlace = _es_enlace(actual)
+        except FileNotFoundError:
+            continue
+        if es_enlace:
+            raise ValueError("No se permiten enlaces ni junctions.")
+    relativa = candidata.resolve(strict=False).relative_to(base)
+    if relativa.suffix != ".py":
+        raise ValueError("Solo se prueban cambios en archivos Python.")
+    return relativa
+
+
+def _copiar_proyecto(origen, destino):
+    """Snapshot reducido; nunca se considera una barrera de seguridad.
+
+    Sin seguir symlinks/reparse points y sin copiar secretos, memorias o entornos.
+    Un backend futuro debe ingerirlo como datos y volver a comprobar los límites.
+    """
+    origen = Path(origen)
+    if _es_enlace(origen):
+        raise ValueError("El origen no puede ser un enlace ni junction.")
+    origen = origen.resolve(strict=True)
+    copia = Path(destino) / "proyecto"
+    copia.mkdir()
+    total = cantidad = 0
+    for directorio, carpetas, archivos in os.walk(origen, followlinks=False):
+        raiz = Path(directorio)
+        permitidas = []
+        for nombre in carpetas:
+            if nombre.casefold() in _OMITIR or nombre.startswith("."):
+                continue
+            if _es_enlace(raiz / nombre):
+                raise ValueError("No se copian enlaces ni junctions.")
+            permitidas.append(nombre)
+        carpetas[:] = permitidas
+        for nombre in archivos:
+            ruta = raiz / nombre
+            if nombre.startswith(".") or not (ruta.suffix.lower() in _EXTENSIONES or nombre in _RECURSOS):
+                continue
+            if _es_enlace(ruta) or not stat.S_ISREG(ruta.stat().st_mode) or ruta.stat().st_nlink > 1:
+                raise ValueError("Solo se copian archivos regulares, sin enlaces.")
+            total += ruta.stat().st_size
+            cantidad += 1
+            if total > LIMITE_COPIA or cantidad > LIMITE_ARCHIVOS:
+                raise ValueError("El proyecto excede los límites de la copia.")
+            salida = copia / ruta.relative_to(origen)
+            salida.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ruta, salida)
+    return str(copia)
+
+
 def probar_proyecto(ruta_proyecto=None, timeout=TIMEOUT_PRUEBAS):
-    """Corre la suite de pruebas del proyecto en una copia temporal.
-    Sirve como chequeo de salud: '¿mi código actual está sano?'."""
-    origen = ruta_proyecto or RUTA_PROYECTO
-
-    with tempfile.TemporaryDirectory(prefix="bridget_sandbox_") as carpeta:
-        copia = _copiar_proyecto(origen, carpeta)
-        crudo = _correr_suite(copia, timeout)
-
-    if crudo["timeout"]:
-        etapa = "timeout"
-    elif crudo["codigo_retorno"] != 0:
-        etapa = "pruebas"
-    else:
-        etapa = "ok"
-
-    return {
-        "exito": etapa == "ok",
-        "etapa": etapa,
-        "salida": crudo["salida"],
-        "errores": crudo["errores"],
-        "codigo_retorno": crudo["codigo_retorno"],
-    }
+    backend = obtener_backend()
+    rechazo = _comprobar_backend(backend)
+    if rechazo:
+        return rechazo
+    try:
+        with tempfile.TemporaryDirectory(prefix="bridget_sandbox_") as carpeta:
+            copia = _copiar_proyecto(ruta_proyecto or RUTA_PROYECTO, carpeta)
+            return _ejecutar(backend, copia, timeout, "pytest", "pruebas")
+    except (OSError, ValueError):
+        return _fallo("entrada_invalida", "No se pudo preparar una copia segura del proyecto.")
 
 
 def probar_cambio_en_proyecto(ruta_archivo, nuevo_codigo,
                               ruta_proyecto=None, timeout=TIMEOUT_PRUEBAS):
-    """Prueba una versión nueva de un archivo del proyecto SIN tocar el
-    original: copia el proyecto a una carpeta temporal, escribe ahí el
-    archivo modificado y corre la suite completa sobre la copia.
-
-    Devuelve un dict con exito/etapa/salida/errores. Etapas posibles:
-    'fuera_del_proyecto', 'sintaxis', 'pruebas', 'timeout', 'ok'.
-    """
-    origen = os.path.abspath(ruta_proyecto or RUTA_PROYECTO)
-    absoluta = os.path.abspath(
-        ruta_archivo if os.path.isabs(ruta_archivo)
-        else os.path.join(origen, ruta_archivo)
-    )
-    relativa = os.path.relpath(absoluta, origen)
-
-    if relativa.startswith(".."):
-        return {
-            "exito": False, "etapa": "fuera_del_proyecto",
-            "salida": "",
-            "errores": f"{ruta_archivo} no pertenece al proyecto {origen}.",
-            "codigo_retorno": -1,
-        }
-
+    origen = ruta_proyecto or RUTA_PROYECTO
+    try:
+        relativa = _ruta_proyecto(origen, ruta_archivo)
+    except (OSError, ValueError):
+        return _fallo("fuera_del_proyecto", "La ruta debe ser un Python dentro del proyecto, sin enlaces.")
     ok, error = verificar_sintaxis(nuevo_codigo)
     if not ok:
-        return {
-            "exito": False, "etapa": "sintaxis",
-            "salida": "", "errores": f"Error de sintaxis: {error}",
-            "codigo_retorno": -1,
-        }
-
-    with tempfile.TemporaryDirectory(prefix="bridget_sandbox_") as carpeta:
-        copia = _copiar_proyecto(origen, carpeta)
-        destino = os.path.join(copia, relativa)
-        os.makedirs(os.path.dirname(destino), exist_ok=True)
-        with open(destino, "w", encoding="utf-8") as f:
-            f.write(nuevo_codigo)
-
-        crudo = _correr_suite(copia, timeout)
-
-    if crudo["timeout"]:
-        etapa = "timeout"
-    elif crudo["codigo_retorno"] != 0:
-        etapa = "pruebas"
-    else:
-        etapa = "ok"
-
-    return {
-        "exito": etapa == "ok",
-        "etapa": etapa,
-        "salida": crudo["salida"],
-        "errores": crudo["errores"],
-        "codigo_retorno": crudo["codigo_retorno"],
-        "archivo": relativa,
-    }
+        return _fallo("sintaxis", error)
+    backend = obtener_backend()
+    rechazo = _comprobar_backend(backend)
+    if rechazo:
+        return rechazo
+    try:
+        with tempfile.TemporaryDirectory(prefix="bridget_sandbox_") as carpeta:
+            copia = _copiar_proyecto(origen, carpeta)
+            destino = Path(copia) / relativa
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            destino.write_text(nuevo_codigo, encoding="utf-8")
+            resultado = _ejecutar(backend, copia, timeout, "pytest", "pruebas")
+            resultado["archivo"] = str(relativa)
+            return resultado
+    except (OSError, ValueError):
+        return _fallo("entrada_invalida", "No se pudo preparar una copia segura del cambio.")
 
 
 def crear_y_probar(descripcion, funcion_llm, max_intentos=3,
@@ -362,6 +272,11 @@ def crear_y_probar(descripcion, funcion_llm, max_intentos=3,
 
     Devuelve: {exito, codigo, resultado, intentos, max_intentos}
     """
+    rechazo = _comprobar_backend(obtener_backend())
+    if rechazo:
+        return {"exito": False, "codigo": "", "resultado": rechazo,
+                "intentos": 0, "max_intentos": max_intentos}
+
     prompt = (
         f"Escribí un script Python completo que haga esto: {descripcion}\n\n"
         "Requisitos:\n"
@@ -383,6 +298,10 @@ def crear_y_probar(descripcion, funcion_llm, max_intentos=3,
         respuesta = funcion_llm(prompt)
         codigo = extraer_codigo(respuesta)
         resultado = ejecutar_codigo(codigo, timeout=timeout)
+
+        if resultado["etapa"] == "aislamiento_no_disponible":
+            return {"exito": False, "codigo": codigo, "resultado": resultado,
+                    "intentos": intento, "max_intentos": max_intentos}
 
         if resultado["exito"]:
             return {
@@ -408,17 +327,21 @@ def crear_y_probar(descripcion, funcion_llm, max_intentos=3,
 def guardar_codigo_validado(codigo, descripcion="", carpeta=None):
     """Guarda un script que ya pasó por el sandbox en sandbox_workspace/,
     con un encabezado que documenta de dónde salió. Devuelve la ruta."""
+    # Una llamada directa tampoco puede etiquetar código sin probarlo.
+    resultado = ejecutar_codigo(codigo)
+    if not resultado["exito"]:
+        raise RuntimeError(resultado["errores"] or "El código no pasó la validación aislada.")
     destino = carpeta or WORKSPACE
     os.makedirs(destino, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     ruta = os.path.join(destino, f"script_{timestamp}.py")
 
     encabezado = (
         f"# Generado por {ASSISTANT_NAME} y probado en el sandbox el {datetime.now().isoformat()}\n"
     )
     if descripcion:
-        encabezado += f"# Pedido original: {descripcion}\n"
+        encabezado += "# Pedido original: " + descripcion.replace("\r", "").replace("\n", "\n# ") + "\n"
 
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(encabezado + "\n" + codigo + "\n")
