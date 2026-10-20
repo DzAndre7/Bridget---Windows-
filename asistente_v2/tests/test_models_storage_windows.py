@@ -171,3 +171,16 @@ def test_native_diagnostic_uses_only_fixed_imports_and_timeout(monkeypatch):
     run.side_effect = diagnostics.subprocess.TimeoutExpired("python", 15)
     checks = diagnostics.report(native_imports=True)["checks"]
     assert all(c["status"] == "error" for c in checks if c["component"].startswith("import/"))
+
+
+def test_diagnostic_runs_with_only_stdlib_and_fails_strict_for_missing_packages():
+    # -I -S elimina site-packages y PYTHONPATH: funciona antes del instalador.
+    import subprocess
+    import sys
+    script = Path(__file__).resolve().parents[2] / "scripts/diagnose.py"
+    result = subprocess.run([sys.executable, "-I", "-S", str(script), "--json", "--strict"],
+                            capture_output=True, text=True, timeout=15, check=False)
+    assert result.returncode == 1, result.stderr
+    data = json.loads(result.stdout)
+    assert any(c["component"] == "texto/ollama" and c["status"] == "missing" for c in data["checks"])
+    assert next(c for c in data["checks"] if c["component"] == "ejecucion_dinamica")["status"] == "blocked"

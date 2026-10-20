@@ -66,8 +66,8 @@ def report(*, probe_ollama=False, audio_devices=False, native_imports=False):
     add("obsidian", "ok" if vault and Path(vault).is_absolute() and Path(vault).is_dir() else "missing", "Vault configurado; no se leen notas" if vault else "VAULT_PATH opcional sin configurar")
     from core.app_permissions import approved_apps
     add("aplicaciones", "ok", f"{len(approved_apps())} aplicaciones autorizadas; cada apertura requiere confirmación")
-    from core import sandbox
-    state = sandbox.estado_aislamiento()
+    from core.sandbox_backends import obtener_backend
+    state = obtener_backend().estado()
     add("ejecucion_dinamica", "blocked" if not state.disponible else "error", "Debe permanecer bloqueada; QEMU no se activa")
     if sys.platform == "win32":
         import winreg
