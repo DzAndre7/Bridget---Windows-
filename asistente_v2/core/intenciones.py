@@ -396,7 +396,7 @@ def detectar_intencion(texto):
     ]) and extraer_conversion(texto)[0]:
         return "convertir_documento"
 
-    elif any(indicador in texto for indicador in  ["/home/", "/tmp/", "~/", ".py", ".txt", ".md", ".json"]):
+    elif extraer_ruta_archivo(texto) or any(indicador in texto for indicador in [".py", ".txt", ".md", ".json"]):
         return "leer_archivo"
 
     elif _contiene(texto, [
@@ -622,10 +622,9 @@ def extraer_conversion(texto):
     """De un pedido como 'convertí /ruta/archivo.md a pdf' saca
     (ruta, extension_destino). (None, None) si no hay ninguna ruta en el
     mensaje; (ruta, None) si hay ruta pero no se reconoce el formato pedido."""
-    rutas = re.findall(r'[~/][\w/\.\-]+', texto)
-    if not rutas:
+    ruta = extraer_ruta_archivo(texto)
+    if not ruta:
         return None, None
-    ruta = rutas[0]
 
     # el formato se busca en lo que queda DESPUÉS de sacar la ruta: si no,
     # la propia extensión del archivo de entrada (ej. ".md") se confundiría
@@ -695,12 +694,10 @@ def normalizar_nombre_programa(objeto):
 
 
 def extraer_ruta_archivo(texto):
-    """Extrae la ruta de un archivo del comando."""
-    patron = r'(/[a-zA-Z0-9_\-./~]+\.py|/[a-zA-Z0-9_\-./~]+)'
-    coincidencias = re.findall(patron, texto)
-    if coincidencias:
-        return coincidencias[0].strip()
-    return None
+    """Rutas absolutas Windows/POSIX; usar comillas si contienen espacios."""
+    pattern = r'''["']((?:[A-Za-z]:[\\/]|~/|/|\\\\)[^"'\r\n]+)["']|((?:[A-Za-z]:[\\/]|~/|/|\\\\)[^\s"'<>|]+)'''
+    match = re.search(pattern, texto)
+    return (match.group(1) or match.group(2)).rstrip(",;!?") if match else None
 
 
 def extraer_tipo_analisis(texto):

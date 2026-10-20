@@ -1,3 +1,9 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(os.environ.get("BRIDGET_ENV_FILE", Path(__file__).resolve().parents[1] / ".env")))
+
 # ÚNICO lugar donde se elige el nombre del asistente y de su creador.
 # Todo el proyecto (prompts, ventana, context.md, sandbox) lee de acá:
 # cambiá estos valores y el asistente pasa a llamarse así en todos lados.
@@ -13,12 +19,12 @@ ASSISTANT_CREATOR = "Usuario"
 # usan el MISMO modelo que la conversación: caliente responde en ~1 segundo.
 # Si algún día hay más VRAM (>8 GB), apuntá MODELO_RAPIDO a un modelo chico
 # (ej: "llama3.2") para clasificar más rápido sin desalojar al principal.
-MODELO_CONVERSACION = "dolphin3:8b"
+MODELO_CONVERSACION = os.environ.get("BRIDGET_MODELO_CONVERSACION", "dolphin3:8b")
 MODELO_RAPIDO = MODELO_CONVERSACION  # clasificación de intenciones y extracciones
-MODELO_VISION = "llava"              # corre en CPU (num_gpu=0) para no desalojar al principal
-MODELO_EMBEDDINGS = "nomic-embed-text-v2-moe"
+MODELO_VISION = os.environ.get("BRIDGET_MODELO_VISION", "llava")              # corre en CPU (num_gpu=0) para no desalojar al principal
+MODELO_EMBEDDINGS = os.environ.get("BRIDGET_MODELO_EMBEDDINGS", "nomic-embed-text-v2-moe")
 MODELO_REVISOR = "llama-3.3-70b-versatile"  # revisor externo via Groq
-MODELO_STT = "small"                 # tamaño del modelo Whisper (tiny/base/small/...)
+MODELO_STT = os.environ.get("BRIDGET_MODELO_STT", "small")                 # tamaño del modelo Whisper (tiny/base/small/...)
                                      # "small" + faster-whisper int8 en CPU:
                                      # mucho más preciso en español que "base"
                                      # y aun así más rápido que el "base" viejo

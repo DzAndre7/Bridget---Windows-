@@ -1,66 +1,64 @@
-# core/microfono_ventana.py
-# Captura de micrófono para la interfaz gráfica.
-# Graba mientras se mantiene apretado el botón, y transcribe con Whisper al soltar.
-
-import sounddevice as sd
-import numpy as np
-from scipy.io.wavfile import write
+"""Captura acotada por botón. PortAudio selecciona WASAPI/MME/ALSA según el host."""
 import threading
-from core.listen import escuchar_audio  # reusamos la transcripción que ya tenés
+import numpy as np
+import sounddevice as sd
+from scipy.io.wavfile import write
+from core.runtime_paths import temporary_file
+from core.audio_io import device
+from core.listen import escuchar_audio
 
 FRECUENCIA = 16000
-ARCHIVO_TEMP = "/tmp/bridget_microfono_ventana.wav"
-
-# Estado de la grabación
 _grabando = False
 _frames = []
+_samples = 0
 _stream = None
 _lock = threading.Lock()
 
 
 def iniciar_grabacion():
-    """Empieza a capturar audio del micrófono. Se llama al apretar el botón."""
-    global _grabando, _frames, _stream
+    global _grabando, _frames, _stream, _samples
     with _lock:
         if _grabando:
-            return  # ya está grabando
-        _frames = []
+            return False
+        _frames, _samples = [], 0
         _grabando = True
 
-    def callback(indata, frames_count, time_info, status):
-        if _grabando:
-            _frames.append(indata.copy())
+        def callback(indata, frames_count, time_info, status):
+            global _samples
+            if _grabando and _samples < FRECUENCIA * 60:
+                chunk = indata[:FRECUENCIA * 60 - _samples].copy()
+                _frames.append(chunk)
+                _samples += len(chunk)
 
-    _stream = sd.InputStream(
-        samplerate=FRECUENCIA,
-        channels=1,
-        dtype='int16',
-        callback=callback
-    )
-    _stream.start()
-    return True
+        try:
+            _stream = sd.InputStream(samplerate=FRECUENCIA, channels=1, dtype='int16',
+                                     device=device('input'), callback=callback)
+            _stream.start()
+            return True
+        except BaseException:
+            _grabando = False
+            if _stream is not None:
+                _stream.close()
+                _stream = None
+            raise
 
 
 def detener_grabacion():
-    """Para la grabación, guarda el audio y lo transcribe. Devuelve el texto."""
-    global _grabando, _stream
+    global _grabando, _stream, _frames
     with _lock:
         if not _grabando:
             return ""
         _grabando = False
-
-    if _stream is not None:
-        _stream.stop()
-        _stream.close()
-        _stream = None
-
-    if not _frames:
+        if _stream is not None:
+            try:
+                _stream.stop()
+            finally:
+                _stream.close()
+                _stream = None
+        frames, _frames = _frames, []
+    if not frames:
         return ""
-
-    # juntamos todo el audio capturado y lo guardamos
-    audio = np.concatenate(_frames, axis=0)
-    write(ARCHIVO_TEMP, FRECUENCIA, audio)
-
-    # transcribimos reusando la función que ya tenés
-    texto = escuchar_audio(ARCHIVO_TEMP)
-    return texto if texto else ""
+    audio = np.concatenate(frames, axis=0)
+    with temporary_file() as path:
+        write(path, FRECUENCIA, audio)
+        return escuchar_audio(path) or ""

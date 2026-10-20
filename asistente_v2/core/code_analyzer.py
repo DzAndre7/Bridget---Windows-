@@ -1,11 +1,12 @@
+from core.runtime_paths import data_file
 import os
 import json
-import ollama
+from core.local_models import ollama
 from datetime import datetime
 from pathlib import Path
 from config import ASSISTANT_NAME, MODELO_CONVERSACION
 
-REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
+REPORTS_DIR = data_file("reports", os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports"))
 
 def obtener_archivos_python(ruta_proyecto):
     """Obtiene lista de archivos .py en un proyecto."""

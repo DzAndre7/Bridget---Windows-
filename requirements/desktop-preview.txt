@@ -1,0 +1,4 @@
+# Opcional sobre el lock Windows Text/Voice: sin PyAutoGUI para abrir el chat.
+# No es un lock transitivo: el instalador conserva pip freeze. Validar en CI.
+pywebview==6.1
+pillow==11.3.0

@@ -1,3 +1,4 @@
+from core.runtime_paths import data_file
 """
 Agenda y recordatorios: "recordame mañana a las nueve llamar al médico".
 
@@ -19,14 +20,13 @@ Tres piezas:
 import json
 import os
 import re
-import subprocess
 import threading
 import time
 from datetime import datetime, timedelta
 
-AGENDA_FILE = os.path.join(
+AGENDA_FILE = data_file("agenda.json", os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agenda.json"
-)
+))
 
 INTERVALO_AVISADOR = 20  # segundos entre revisiones de la agenda
 
@@ -197,9 +197,8 @@ def _avisar_default(texto):
     La voz se importa acá adentro (perezoso: cargar Coqui al importar agenda
     repetiría el problema de RAM que ya tuvo la ventana con Whisper)."""
     try:
-        subprocess.run(
-            ["notify-send", "-u", "critical", "Bridget", texto], timeout=5
-        )
+        from core.notifications import notify
+        notify("Bridget", texto)
     except Exception:
         pass
     try:

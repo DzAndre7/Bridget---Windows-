@@ -1,5 +1,6 @@
 
 from config import ASSISTANT_NAME
+from core.runtime_paths import APP_DIR, data_file
 from dotenv import load_dotenv
 load_dotenv()
 from core import push as push_mod
@@ -24,7 +25,7 @@ import uuid
 import tempfile
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
 
 # El server se expone vía ngrok con una sola API key estática (ver
@@ -85,7 +86,7 @@ def _obtener_sesion(x_session_id):
 
 
 # --- Inbox: rutas seguras -------------------------------------------------
-INBOX_DIR = os.path.join(os.path.dirname(__file__), "inbox")
+INBOX_DIR = data_file("inbox")
 EXTENSIONES_PERMITIDAS = {".py", ".txt", ".md", ".json"}
 
 def _ruta_inbox(nombre):
@@ -317,7 +318,7 @@ async def speak(mensaje: Mensaje, x_api_key: str = Header(None)):
         if not ruta_audio or not os.path.exists(ruta_audio):
             raise HTTPException(status_code=500, detail="Error generando audio")
 
-        # borramos el wav temporal una vez enviado, para no llenar /tmp
+        # borramos el wav temporal una vez enviado, para no acumular temporales
         return FileResponse(
             path=ruta_audio,
             media_type="audio/wav",

@@ -2,10 +2,13 @@ import sounddevice as sd
 import numpy as np
 import webrtcvad
 import warnings
-warnings.filterwarnings("ignore")
 from scipy.io.wavfile import write
 
 from config import MODELO_STT
+from core.runtime_paths import temporary_file
+from core.audio_io import device
+
+warnings.filterwarnings("ignore")
 
 # El modelo de voz se carga recién la primera vez que alguien usa la voz,
 # no al importar este módulo. Antes, abrir la ventana ya pagaba ese costo
@@ -42,7 +45,6 @@ def _transcribir(ruta):
         return " ".join(s.text.strip() for s in segmentos).strip()
     return modelo.transcribe(ruta, language="es")["text"].strip()
 
-ARCHIVO_TEMP = "/tmp/bridget_escucha.wav"
 FRECUENCIA = 16000
 DURACION_SILENCIO = 1.6 # segundos de silencio para cortar
 
@@ -58,8 +60,8 @@ def escuchar():
     frame_duracion = 1000 // frames_por_segundo #ms por frame
     frame_size = FRECUENCIA * frame_duracion // 1000 
 
-    with sd.InputStream(samplerate=FRECUENCIA, channels=1, dtype='int16') as stream:
-        while True:
+    with sd.InputStream(samplerate=FRECUENCIA, channels=1, dtype='int16', device=device('input')) as stream:
+        for _ in range(50 * 60):  # máximo 60 s, también si nunca llega voz
             frame, _ = stream.read(frame_size)
             frame_bytes = frame.tobytes()
 
@@ -76,11 +78,13 @@ def escuchar():
                 if silencio_frames > frames_por_segundo * DURACION_SILENCIO:
                     break
 
+    if not frames:
+        return ""
     audio = np.concatenate(frames, axis=0)
-    write(ARCHIVO_TEMP, FRECUENCIA, audio)
-
-    print(" 🎬 Procesando...")
-    return _transcribir(ARCHIVO_TEMP)
+    with temporary_file() as path:
+        write(path, FRECUENCIA, audio)
+        print(" 🎬 Procesando...")
+        return _transcribir(path)
 
 def escuchar_audio(ruta_archivo):
     try:
@@ -91,10 +95,10 @@ def escuchar_audio(ruta_archivo):
 
 def escuchar_fragmento(duracion=1.5):
     import sounddevice as sd 
-    import numpy as np 
     from scipy.io.wavfile import write
 
-    audio = sd.rec(int(duracion * FRECUENCIA), samplerate=FRECUENCIA, channels=1, dtype='int16')
+    audio = sd.rec(int(duracion * FRECUENCIA), samplerate=FRECUENCIA, channels=1, dtype='int16', device=device('input'))
     sd.wait()
-    write("/tmp/bridget_fragmento.wav", FRECUENCIA, audio)
-    return _transcribir("/tmp/bridget_fragmento.wav").lower()
+    with temporary_file() as path:
+        write(path, FRECUENCIA, audio)
+        return _transcribir(path).lower()

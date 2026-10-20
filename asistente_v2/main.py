@@ -1,6 +1,7 @@
-import sys 
-import datetime 
-sys.stdout.reconfigure(encoding="utf-8")
+import sys
+import datetime
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 from config import ASSISTANT_NAME, ASSISTANT_CREATOR
 import core.brain as brain
@@ -8,9 +9,13 @@ from core.brain import procesar_comando, consultar_llama, usar_sink_de_frases
 from core import sesiones
 from core.memory import obtener_nombre_preferido, guardar_recuerdo
 from core.voice import hablar, hablar_interrumpible, hablar_por_frases
-from core.listen import escuchar
 
-VOZ_ACTIVADA = True
+def escuchar():
+    from core.listen import escuchar as capture
+    return capture()
+
+import os
+VOZ_ACTIVADA = os.environ.get("BRIDGET_VOICE", "0") == "1"
 
 
 def _hablar_respuesta(respuesta):
@@ -31,8 +36,8 @@ def limpiar_para_tts(texto):
     texto = re.sub(r'`+', '', texto)  # quita comillas de código
     return texto.strip()
 
-def obtener_saludo(): 
-    hora = datetime.datetime.now().hour 
+def obtener_saludo():
+    hora = datetime.datetime.now().hour
 
     if 5 <= hora < 12:
         return "Buenos días, estoy listo para arrancar."
@@ -40,7 +45,7 @@ def obtener_saludo():
     elif 12 <= hora < 18:
         return "Buenas tardes, listo cuando vos quieras."
 
-    else: 
+    else:
         return "Buenas noches, decime qué hacemos hoy."
 
 def modo_voz(sesion=None):
@@ -110,19 +115,25 @@ def modo_voz_interrumpible(sesion=None):
                 if any(palabra in fragmento for palabra in ["para", "pará", "pera", "par", "pala", "stop", "basta", "callate", "calla"]):
                     interrumpido.set()
                     break
-        
+
         proceso_audio = hablar_interrumpible(limpiar_para_tts(respuesta))
 
         hilo_vigilancia = threading.Thread(target=vigilar_interrupcion, daemon=True)
         hilo_vigilancia.start()
 
-        while proceso_audio.poll() is None: 
+        if proceso_audio is None:
+            interrumpido.set()
+            hilo_vigilancia.join(timeout=0.5)
+            continue
+        while proceso_audio.poll() is None:
+            import time
+            time.sleep(0.02)
             if interrumpido.is_set():
                 proceso_audio.terminate()
                 hablar("¿Qué pasó? Te escucho...")
                 break
-        
-        interrumpido.set() 
+
+        interrumpido.set()
         hilo_vigilancia.join(timeout=0.5)
 
 def main():
@@ -152,7 +163,7 @@ def main():
         nombre_usuario = obtener_nombre_preferido() or ASSISTANT_CREATOR
         user_input = input(f"{nombre_usuario}: ")
 
-        if user_input.lower().strip() == "escuchame": 
+        if user_input.lower().strip() == "escuchame":
             user_input = escuchar()
             print(f"{nombre_usuario} (voz): {user_input}")
 

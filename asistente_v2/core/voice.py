@@ -1,27 +1,17 @@
-import subprocess
 import os
 import sys
 import base64
-import uuid
-import tempfile
 import threading
 import queue
-import requests
 from contextlib import contextmanager
 from dotenv import load_dotenv
 
+from core.runtime_paths import temporary_file
+from core.audio_io import play_wav
+
 load_dotenv()
 
-import builtins
-_print_original = builtins.print
-
-def _print_seguro(*args, **kwargs):
-    try:
-        _print_original(*args, **kwargs)
-    except UnicodeEncodeError:
-        pass
-
-builtins.print = _print_seguro
+_print_original = print
 
 @contextmanager
 def silenciar_salida():
@@ -36,7 +26,6 @@ def silenciar_salida():
             sys.stdout = viejo_stdout
             sys.stderr = viejo_stderr
 
-AUDIO_SALIDA = "/tmp/bridget_respuesta.wav"
 
 # --- Configuración de Google TTS (voz principal) ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_TTS_API_KEY")
@@ -68,6 +57,7 @@ def _generar_google(texto, salida):
         "audioConfig": {"audioEncoding": "LINEAR16"}
     }
     try:
+        import requests
         respuesta = requests.post(GOOGLE_URL, json=payload, timeout=15)
         if respuesta.status_code == 200:
             audio_bytes = base64.b64decode(respuesta.json()["audioContent"])
@@ -77,8 +67,8 @@ def _generar_google(texto, salida):
         else:
             _print_original(f"Google TTS error {respuesta.status_code}, usando voz local.")
             return False
-    except Exception as e:
-        _print_original(f"Google TTS falló ({e}), usando voz local.")
+    except Exception:
+        _print_original("Google TTS no disponible, usando voz local.")
         return False
 
 def _generar_coqui(texto, salida):
@@ -92,29 +82,52 @@ def _generar_coqui(texto, salida):
         _print_original(f"Error generando audio local: {e}")
         return False
 
-def _generar(texto, salida=AUDIO_SALIDA):
-    """Genera el audio en `salida`: prueba Google primero, cae a Coqui si falla."""
-    if _generar_google(texto, salida):
+def _generar(texto, salida):
+    """auto: Google si fue configurado, SAPI en Windows y Coqui de respaldo.
+
+    BRIDGET_TTS=windows/coqui/google fuerza proveedor. No descarga modelos al importar.
+    """
+    provider = os.environ.get("BRIDGET_TTS", "auto").casefold()
+    if provider not in {"auto", "windows", "google", "coqui"}:
+        raise ValueError("BRIDGET_TTS debe ser auto/windows/google/coqui")
+    if provider in {"auto", "google"} and _generar_google(texto, salida):
         return True
+    if provider == "google":
+        return False
+    if provider == "windows" or (provider == "auto" and sys.platform == "win32"):
+        try:
+            from core.windows_native import synthesize
+            synthesize(texto, salida)
+            return os.path.getsize(salida) > 44
+        except Exception:
+            if provider == "windows":
+                return False
     return _generar_coqui(texto, salida)
 
+
 def hablar(texto):
-    # Reproducción local (secuencial): un solo archivo fijo está bien.
-    if _generar(texto, AUDIO_SALIDA):
-        subprocess.run(["paplay", AUDIO_SALIDA])
+    with temporary_file() as path:
+        if _generar(texto, path):
+            play_wav(path)
+
 
 def hablar_interrumpible(texto):
-    if _generar(texto, AUDIO_SALIDA):
-        proceso = subprocess.Popen(["paplay", AUDIO_SALIDA])
-        return proceso
-    return None
+    path = generar_audio(texto)
+    return play_wav(path, blocking=False, cleanup=True) if path else None
+
 
 def generar_audio(texto):
-    """Genera audio sin reproducir y retorna la ruta. Usa un archivo ÚNICO por
-    llamada: así dos requests concurrentes de la API (/speak) no se pisan el wav."""
-    salida = os.path.join(tempfile.gettempdir(), f"bridget_tts_{uuid.uuid4().hex}.wav")
-    if _generar(texto, salida):
-        return salida
+    """El receptor es responsable de borrar el WAV devuelto (API/UI/reproductor)."""
+    import tempfile
+    fd, path = tempfile.mkstemp(prefix="bridget_tts_", suffix=".wav")
+    os.close(fd)
+    try:
+        if _generar(texto, path):
+            return path
+    except BaseException:
+        os.unlink(path)
+        raise
+    os.unlink(path)
     return None
 
 
@@ -158,7 +171,9 @@ def hablar_por_frases(frases):
         frase, ruta = item
         habladas.append(frase)
         try:
-            subprocess.run(["paplay", ruta])
+            play_wav(ruta)
+        except Exception:
+            _print_original("No se pudo reproducir una frase; revisar dispositivo de salida.")
         finally:
             try:
                 os.remove(ruta)

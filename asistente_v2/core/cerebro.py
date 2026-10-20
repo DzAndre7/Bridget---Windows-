@@ -18,10 +18,13 @@ def _get_vault_path():
     if not ruta_cruda:
         raise ValueError(
             "VAULT_PATH no está definido en .env. "
-            "Agregá una línea como: VAULT_PATH=/home/bridget/Documentos/Obsidian/cerebro"
+            "Configurá una ruta absoluta Windows o Linux, por ejemplo C:/Notas/Bridget"
         )
     # expanduser convierte '~' en la ruta real del home, si lo usaras
     vault = Path(ruta_cruda).expanduser()
+    if not vault.is_absolute():
+        raise ValueError("VAULT_PATH debe ser absoluto")
+    vault = vault.resolve()
     if not vault.exists():
         raise FileNotFoundError(f"El vault no existe en la ruta: {vault}")
     if not vault.is_dir():
@@ -38,7 +41,15 @@ def _es_nota_valida(ruta):
     partes = ruta.parts 
     carpetas_ignoradas = {".trash", ".obsidian"}
     #si alguna carpeta de la ruta está en la lista negra, no es válida
-    return not any(parte in carpetas_ignoradas for parte in partes)
+    if any(parte.casefold() in carpetas_ignoradas for parte in partes):
+        return False
+    try:
+        vault = _get_vault_path()
+        ruta.resolve(strict=True).relative_to(vault)
+        return not any(p.is_symlink() or getattr(p.lstat(), "st_file_attributes", 0) & 0x400
+                       for p in (ruta, *ruta.parents) if p != vault and vault in p.parents)
+    except (OSError, ValueError):
+        return False
 
 def listar_notas():
     """
@@ -113,15 +124,17 @@ def _limpiar_nombre_archivo(titulo):
     colapsa espacios, y recorta largo excesivo.
     """
     # sacamos caracteres prohibidos en nombres de archivo
-    limpio = re.sub(r'[/\\:*?"<>|]', '', titulo)
+    limpio = re.sub(r'[/\\:*?"<>|\x00-\x1f]', '', titulo)
     # colapsamos espacios múltiples a uno solo
-    limpio = re.sub(r'\s+', ' ', limpio).strip()
+    limpio = re.sub(r'\s+', ' ', limpio).strip().rstrip(". ")
     # límite de largo razonable para el nombre
     if len(limpio) > 80:
         limpio = limpio[:80].strip()
     # si quedó vacío por algún motivo, ponemos algo
     if not limpio:
         limpio = "nota sin titulo"
+    if limpio.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL", *[f"COM{i}" for i in range(1, 10)], *[f"LPT{i}" for i in range(1, 10)]}:
+        limpio = "nota " + limpio
     return limpio
 
 
@@ -166,8 +179,11 @@ def guardar_nota(titulo, contenido, carpeta="conversaciones", enlaces=None, tags
     """
     vault = _get_vault_path()
     nombre = _limpiar_nombre_archivo(titulo)
-    destino = vault / carpeta
-
+    relative = Path(carpeta)
+    if relative.is_absolute() or any(part.casefold() in {"..", ".obsidian", ".trash"} for part in relative.parts):
+        raise ValueError("Carpeta de nota no permitida")
+    destino = vault / relative
+    destino.resolve().relative_to(vault)
     destino.mkdir(parents=True, exist_ok=True)
 
     ruta = destino / f"{nombre}.md"
@@ -180,7 +196,8 @@ def guardar_nota(titulo, contenido, carpeta="conversaciones", enlaces=None, tags
     texto = _construir_nota(titulo, contenido, origen="conversación", enlaces=enlaces, tags=tags)
 
     try:
-        ruta.write_text(texto, encoding="utf-8")
+        with ruta.open("x", encoding="utf-8") as stream:
+            stream.write(texto)
         return str(ruta)
     except Exception as e:
         print(f"[Error al guardar nota: {e}]")
@@ -198,6 +215,7 @@ def guardar_en_inbox(titulo, contenido, motivo=""):
     vault = _get_vault_path()
     nombre = _limpiar_nombre_archivo(titulo)
     destino = vault / "_inbox"
+    destino.resolve().relative_to(vault)
     destino.mkdir(parents=True, exist_ok=True)
 
     ruta = destino / f"{nombre}.md"
@@ -216,7 +234,8 @@ def guardar_en_inbox(titulo, contenido, motivo=""):
     )
 
     try:
-        ruta.write_text(texto, encoding="utf-8")
+        with ruta.open("x", encoding="utf-8") as stream:
+            stream.write(texto)
         return str(ruta)
     except Exception as e:
         print(f"[Error al guardar en inbox: {e}]")

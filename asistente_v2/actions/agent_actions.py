@@ -1,68 +1,41 @@
-import pyautogui
 import time
-import ollama
-import os
-import glob
-from core.vision import capturar_pantalla, ver_pantalla
+from core.local_models import ollama
+from core.app_permissions import find_apps, require_automation
 from config import ASSISTANT_NAME, MODELO_RAPIDO, KEEP_ALIVE
 
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0.5
 DEBUG_MODE = False
+ALIAS_PROGRAMAS = {}  # Compatibilidad de imports; la autoridad es la allowlist local.
 
-ALIAS_PROGRAMAS = {
-    "visual studio code": "code",
-    "vs code": "code",
-    "vscode": "code",
-    "firefox": "firefox",
-    "chrome": "google-chrome-stable",
-    "spotify": "spotify",
-    "discord": "discord",
-    "terminal": "alacritty",
-}
 
 def buscar_aplicaciones_sistema(termino):
-    termino = termino.lower()
-    resultados = []
+    return find_apps(termino)
 
-    # Buscar en /usr/share/applications/
-    archivos = glob.glob("/usr/share/applications/*.desktop")
-    if DEBUG_MODE: 
-        print(f"DEBUG: encontrados {len(archivos)} archivos .desktop")
-    for archivo in archivos:
-        try: 
-            with open(archivo, "r", encoding="utf-8") as f:
-                contenido = f.read()
-                nombre = "" 
-                comando = "" 
-                for linea in contenido.splitlines():
-                    if linea.startswith("Name=") and not nombre:
-                        nombre = linea.split("=", 1)[1].strip().lower()
-                    if linea.startswith("Exec=") and not comando:
-                        comando = linea.split("=", 1)[1].strip().split()[0]
-                if termino in nombre: 
-                    if DEBUG_MODE:
-                        print(f"DEBUG MATCH: nombre='{nombre}' comando='{comando}'")
-                if termino in nombre and comando:
-                    resultados.append((nombre, comando))
-        except:
-            continue
-    return resultados    
 
-def clickear(x, y):
-    pyautogui.click(x, y)
+def _desktop(confirmed):
+    require_automation(confirmed)
+    import pyautogui
+    pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0.5
+    return pyautogui
 
-def escribir(texto):
-    pyautogui.write(texto, interval=0.05)
 
-def presionar(tecla):
-    pyautogui.press(tecla)
+def clickear(x, y, *, confirmado=False):
+    _desktop(confirmado).click(x, y)
+
+
+def escribir(texto, *, confirmado=False):
+    _desktop(confirmado).write(texto, interval=0.05)
+
+
+def presionar(tecla, *, confirmado=False):
+    _desktop(confirmado).press(tecla)
+
 
 def esperar(segundos):
     time.sleep(segundos)
 def planificar_tarea(instruccion):
     prompt = f"""
-Sos {ASSISTANT_NAME}, un agente que controla una PC con Arch Linux.
+Sos {ASSISTANT_NAME}, un asistente que propone acciones para la plataforma actual.
 Tarea solicitada: {instruccion}
 
 Describí en lenguaje natural y de forma concisa los pasos que vas a seguir para completar la tarea.

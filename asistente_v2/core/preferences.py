@@ -1,8 +1,10 @@
+from core.runtime_paths import data_file
 import json
 import os
+from core.storage import write_json
 import threading
 
-PREFERENCES_FILE = "preferences.json"
+PREFERENCES_FILE = data_file("preferences.json", "preferences.json")
 lock = threading.Lock()
 
 def cargar_preferencias():
@@ -16,17 +18,15 @@ def cargar_preferencias():
         return {}
 
 def guardar_preferencia(tipo, valor):
-    preferencias = cargar_preferencias()
-    preferencias[tipo] = valor
-
     try:
-        with lock:  # evita pisadas si dos requests guardan a la vez
-            with open(PREFERENCES_FILE, "w", encoding="utf-8") as archivo:
-                json.dump(preferencias, archivo, ensure_ascii=False, indent=4)
-    except (IOError, PermissionError) as e:
-        print(f"Ocurrió un error al guardar la preferencia: {e}")
+        with lock:
+            preferencias = cargar_preferencias()
+            preferencias[tipo] = valor
+            write_json(PREFERENCES_FILE, preferencias)
+    except (OSError, ValueError):
         return False
     return True
+
 
 def obtener_preferencia(tipo):
     preferencias = cargar_preferencias()

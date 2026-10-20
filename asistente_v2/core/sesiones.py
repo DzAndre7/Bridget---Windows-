@@ -1,3 +1,4 @@
+from core.runtime_paths import data_file
 """
 Persistencia de sesiones: los chats sobreviven a los reinicios.
 
@@ -28,7 +29,7 @@ from datetime import datetime
 from core.brain import Sesion
 from core import memoria_semantica
 
-DIR_SESIONES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sesiones")
+DIR_SESIONES = data_file("sesiones", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sesiones"))
 
 # cuántos mensajes de la sesión anterior mostramos/inyectamos
 MENSAJES_ANTERIORES = 12

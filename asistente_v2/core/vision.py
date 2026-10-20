@@ -1,15 +1,15 @@
 import base64
-import ollama
-import time
-from PIL import ImageGrab
+from core.local_models import ollama
+from io import BytesIO
 
 from config import MODELO_VISION
 
 def capturar_pantalla():
+    from PIL import ImageGrab
     captura = ImageGrab.grab()
-    captura.save("/tmp/bridget_pantalla.png")
-    with open("/tmp/bridget_pantalla.png", "rb") as f:
-        return base64.b64encode(f.read()).decode("utf-8")
+    with BytesIO() as output:
+        captura.save(output, format="PNG")
+        return base64.b64encode(output.getvalue()).decode("utf-8")
 
 def liberar_modelo(modelo):
     """Descarga un modelo de la memoria pidiéndole a Ollama que no lo mantenga."""

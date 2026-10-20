@@ -1,10 +1,11 @@
+from core.runtime_paths import data_file
 import json 
 import os 
 
 DEBUG_MODE = False
-DATASET_MAESTRO_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dataset_maestro.jsonl")
+DATASET_MAESTRO_FILE = data_file("dataset_maestro.jsonl", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dataset_maestro.jsonl"))
 
-DATASET_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dataset.jsonl")
+DATASET_FILE = data_file("dataset.jsonl", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dataset.jsonl"))
 
 def guardar_interaccion(pregunta, respuesta):
     try: 

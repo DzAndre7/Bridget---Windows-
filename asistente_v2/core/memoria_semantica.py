@@ -1,12 +1,17 @@
+from core.runtime_paths import data_file
 import json
 import os
 import numpy as np
-import ollama
+from core.local_models import ollama
 from datetime import datetime
+import threading
+from core.storage import write_json
 
 from config import MODELO_EMBEDDINGS, KEEP_ALIVE
 
-MEMORIA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "memoria_semantica.json")
+_lock = threading.RLock()
+
+MEMORIA_FILE = data_file("memoria_semantica.json", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "memoria_semantica.json"))
 
 # Caché en memoria: evita releer y reparsear el JSON (cientos de KB con los
 # embeddings) en cada turno de conversación, y precalcula la matriz de
@@ -28,7 +33,18 @@ def obtener_embedding(texto, tipo="document"):
         options={"num_gpu": 0},
         keep_alive=KEEP_ALIVE,
     )
-    return respuesta["embedding"]
+    vector = np.asarray(respuesta["embedding"], dtype=np.float64)
+    if vector.ndim != 1 or not vector.size or not np.isfinite(vector).all():
+        raise ValueError("Embedding inválido del modelo local")
+    return vector.tolist()
+
+
+def _valid_vector(value):
+    try:
+        vector = np.asarray(value, dtype=np.float64)
+        return vector.ndim == 1 and vector.size > 0 and bool(np.isfinite(vector).all())
+    except (ValueError, TypeError):
+        return False
 
 
 def similitud(a, b):
@@ -44,7 +60,10 @@ def similitud(a, b):
 
 
 def _refrescar_cache(memoria, mtime):
-    con_emb = [r for r in memoria if "embedding" in r]
+    con_emb = [r for r in memoria if isinstance(r, dict) and _valid_vector(r.get("embedding"))]
+    if con_emb:
+        size = len(con_emb[0]["embedding"])
+        con_emb = [r for r in con_emb if len(r["embedding"]) == size]
     if con_emb:
         matriz = np.asarray([r["embedding"] for r in con_emb], dtype=np.float64)
         normas = np.linalg.norm(matriz, axis=1)
@@ -58,11 +77,14 @@ def cargar_memoria():
     if not os.path.exists(MEMORIA_FILE):
         return []
     try:
-        mtime = os.path.getmtime(MEMORIA_FILE)
+        metadata = os.stat(MEMORIA_FILE)
+        mtime = (os.path.abspath(MEMORIA_FILE), metadata.st_mtime_ns, metadata.st_size)
         if _cache["mtime"] == mtime:
             return _cache["memoria"]
         with open(MEMORIA_FILE, "r", encoding="utf-8") as f:
             memoria = json.load(f)
+        if not isinstance(memoria, list):
+            raise ValueError("Memoria debe ser una lista")
         _refrescar_cache(memoria, mtime)
         return memoria
     except Exception:
@@ -88,7 +110,10 @@ def _topk(matriz, normas, con_emb, q, top_k, umbral):
 def puntuar_memoria(memoria, embedding_consulta, top_k=3, umbral=0.3):
     """Puntúa una lista de recuerdos contra un embedding ya calculado.
     Función pura (no toca disco ni ollama): usada por el benchmark."""
-    con_emb = [r for r in memoria if "embedding" in r]
+    if top_k <= 0 or not _valid_vector(embedding_consulta):
+        return []
+    con_emb = [r for r in memoria if isinstance(r, dict) and _valid_vector(r.get("embedding"))
+               and len(r["embedding"]) == len(embedding_consulta)]
     if not con_emb:
         return []
     matriz = np.asarray([r["embedding"] for r in con_emb], dtype=np.float64)
@@ -99,24 +124,31 @@ def puntuar_memoria(memoria, embedding_consulta, top_k=3, umbral=0.3):
 
 
 def guardar_recuerdo(texto, categoria="general"):
-    memoria = cargar_memoria()
     embedding = obtener_embedding(texto)
-    recuerdo = {
-        "texto": texto,
-        "categoria": categoria,
-        "embedding": embedding,
-        "fecha": datetime.now().isoformat()
-    }
-    memoria = list(memoria) + [recuerdo]
-    with open(MEMORIA_FILE, "w", encoding="utf-8") as f:
-        json.dump(memoria, f, ensure_ascii=False, indent=2)
-    # el próximo cargar_memoria detectará el nuevo mtime y refrescará el cache
+    with _lock:
+        # No sobrescribir un archivo dañado: requiere recuperación manual.
+        if os.path.exists(MEMORIA_FILE):
+            with open(MEMORIA_FILE, encoding="utf-8") as stream:
+                memoria = json.load(stream)
+            if not isinstance(memoria, list):
+                raise ValueError("Memoria inválida; recuperar antes de guardar")
+        else:
+            memoria = []
+        recuerdo = {"texto": texto, "categoria": categoria, "embedding": embedding,
+                    "embedding_model": MODELO_EMBEDDINGS, "fecha": datetime.now().isoformat()}
+        write_json(MEMORIA_FILE, memoria + [recuerdo])
+        _cache["mtime"] = None
     return True
 
 
 def recordar(consulta, top_k=3, umbral=0.3):
-    memoria = cargar_memoria()  # llena/reusa el cache (matriz + normas)
-    if not memoria or _cache["matriz"] is None:
+    with _lock:
+        memoria = list(cargar_memoria())
+    if not memoria:
         return []
-    q = np.asarray(obtener_embedding(consulta, tipo="query"), dtype=np.float64)
-    return _topk(_cache["matriz"], _cache["normas"], _cache["con_emb"], q, top_k, umbral)
+    candidates = [r for r in memoria if isinstance(r, dict)
+                  and r.get("embedding_model", MODELO_EMBEDDINGS) == MODELO_EMBEDDINGS]
+    if not candidates:
+        return []
+    query = obtener_embedding(consulta, tipo="query")
+    return puntuar_memoria(candidates, query, top_k, umbral)

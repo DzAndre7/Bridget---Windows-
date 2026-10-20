@@ -1,0 +1,29 @@
+# CPython 3.11 x64 Windows. Resolución 2026-10-20; solo wheels fijados por SHA-256.
+# Instalación: pip install --only-binary=:all: --require-hashes -r este_archivo
+# Linux usa requirements/base.txt + requirements/voice.txt; no instalar este lock.
+annotated-types==0.8.0 --hash=sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0
+anyio==4.15.1 --hash=sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101
+certifi==2026.10.18 --hash=sha256:73191c47aaa79da394e8fee2dbc2ec827432cab56311122c9e47abf79e390f62
+charset-normalizer==3.5.2 --hash=sha256:87e50a3e7cb90af586b6c5faf23e302a970415ac73bd7bd90a515a04b427ef96
+click==8.5.0 --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360
+colorama==0.4.6 --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
+ddgs==9.16.0 --hash=sha256:175d9198c958a263f51a06a54368ba0b41294942c0cd29f4aa71be03dbcd5f4a
+distro==1.9.0 --hash=sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2
+groq==1.7.0 --hash=sha256:cb1518f823423d4e52445859eb7d2918a927794cec12f8d5e50d9161e3690fc8
+h11==0.16.0 --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
+httpcore==1.0.9 --hash=sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55
+httpx==0.28.1 --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
+idna==3.20 --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+lxml==6.1.3 --hash=sha256:7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559
+numpy==1.26.4 --hash=sha256:cd25bcecc4974d09257ffcd1f098ee778f7834c3ad767fe5db785be9a4aa9cb2
+ollama==0.6.3 --hash=sha256:6a20bc42c1a5f889295d7ec490d35e5132fc31f339561530f43a8abd4dbfe508
+primp==2.0.1 --hash=sha256:0e27f3e233cf34cae6cbc8158af58b93fb0a87ceb1802b4611c7a14a2d822cdc
+pydantic==2.14.1 --hash=sha256:9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454
+pydantic_core==2.50.1 --hash=sha256:0048b6dddc8ef4b64fccaad878bd143b0c3882ea9936279dc11d613f6b7dd1bc
+python-dotenv==1.2.4 --hash=sha256:42269a8a5b3fd54ffa6f3d84b18abed50064717576b4ecf03dc4a55d8aa04fdc
+requests==2.34.2 --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
+ruff==0.14.1 --hash=sha256:59d599cdff9c7f925a017f6f2c256c908b094e55967f93f2821b1439928746a1
+sniffio==1.3.1 --hash=sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2
+typing-inspection==0.4.4 --hash=sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147
+typing_extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
+urllib3==2.8.0 --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3

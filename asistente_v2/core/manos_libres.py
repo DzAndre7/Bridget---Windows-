@@ -6,11 +6,13 @@ import sounddevice as sd
 import numpy as np
 import webrtcvad
 import threading
+import json
+from core.runtime_paths import temporary_file
+from core.audio_io import device
 from scipy.io.wavfile import write
 from core.listen import escuchar_audio  # reusamos la transcripción
 
 FRECUENCIA = 16000
-ARCHIVO_TEMP = "/tmp/bridget_manoslibres.wav"
 DURACION_SILENCIO = 1.6  # segundos de silencio para cortar (igual que listen.py)
 
 # Estado del modo
@@ -29,7 +31,7 @@ def configurar_ventana(ventana):
 def iniciar():
     """Activa el modo manos libres: arranca el ciclo de escucha en un hilo."""
     global _activo, _hilo
-    if _activo:
+    if _activo or (_hilo is not None and _hilo.is_alive()):
         return
     _activo = True
     _hilo = threading.Thread(target=_ciclo, daemon=True)
@@ -40,6 +42,8 @@ def detener():
     """Desactiva el modo manos libres."""
     global _activo
     _activo = False
+    if _hilo is not None and _hilo is not threading.current_thread():
+        _hilo.join(timeout=2)
 
 
 def pausar():
@@ -73,8 +77,10 @@ def _ciclo():
         hablando = False
 
         try:
-            with sd.InputStream(samplerate=FRECUENCIA, channels=1, dtype='int16') as stream:
-                while _activo and not _pausado:
+            with sd.InputStream(samplerate=FRECUENCIA, channels=1, dtype='int16', device=device('input')) as stream:
+                for _ in range(50 * 60):
+                    if not _activo or _pausado:
+                        break
                     frame, _ = stream.read(frame_size)
                     frame_bytes = frame.tobytes()
 
@@ -103,15 +109,16 @@ def _ciclo():
 
         # Guardamos y transcribimos
         audio = np.concatenate(frames, axis=0)
-        write(ARCHIVO_TEMP, FRECUENCIA, audio)
-        texto = escuchar_audio(ARCHIVO_TEMP)
+        with temporary_file() as path:
+            write(path, FRECUENCIA, audio)
+            texto = escuchar_audio(path)
 
         # Si transcribió algo, avisamos a la ventana para que lo procese
         if texto and texto.strip() and _ventana is not None:
             pausar()
             # Escapamos el texto para meterlo seguro en JS
-            texto_seguro = texto.strip().replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
+            texto_seguro = json.dumps(texto.strip(), ensure_ascii=True)
             try:
-                _ventana.evaluate_js(f"window.recibirVozManosLibres('{texto_seguro}')")
+                _ventana.evaluate_js(f"window.recibirVozManosLibres({texto_seguro})")
             except Exception as e:
                 print(f"Error avisando a la ventana: {e}")

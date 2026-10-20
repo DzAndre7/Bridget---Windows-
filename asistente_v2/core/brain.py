@@ -17,9 +17,7 @@ API pública de siempre (brain.detectar_intencion, brain.normalizar_texto…).
 
 import datetime
 import re
-import ollama
-import subprocess
-import shutil
+from core.local_models import ollama
 import os
 import threading
 
@@ -423,7 +421,7 @@ def _cmd_ejecutar_tarea(texto, texto_original, sesion, assistant_name):
     resultados = buscar_aplicaciones_sistema(programa)
 
     if len(resultados) == 0:
-        return f"No encontré ninguna aplicación que coincida con '{programa}' en el sistema."
+        return f"No encontré ninguna aplicación autorizada que coincida con '{programa}' en el sistema."
 
     elif len(resultados) == 1:
         nombre, comando = resultados[0]
@@ -459,7 +457,7 @@ def _cmd_buscar_en_internet(texto, texto_original, sesion, assistant_name):
     consulta = extraer_consulta_busqueda(texto, assistant_name)
 
     if consulta:
-        exito = buscar_en_internet(consulta)
+        exito = buscar_en_internet(consulta, confirmado=True)
         if exito:
             return f'Buscando "{consulta}" en internet...'
         return "No pude hacer la búsqueda."
@@ -1007,52 +1005,23 @@ MANEJADORES = {
 # --- Despacho ------------------------------------------------------------------
 
 def _resolver_confirmacion_tarea(texto_original, sesion):
-    """La sesión estaba esperando un sí/no (o una opción a/b/c/d) para abrir
-    una aplicación. Resuelve esa confirmación y limpia el estado."""
-    if DEBUG_MODE:
-        print(f"DEBUG ENTRANDO A CONFIRMACION con texto: '{texto_original}'")
-
-    if sesion.opciones_pendientes and texto_original.strip().lower() in ["a", "b", "c", "d"]:
-        letras = ["a", "b", "c", "d"]
-        indice = letras.index(texto_original.strip().lower())
-        if indice < len(sesion.opciones_pendientes):
-            nombre, comando = sesion.opciones_pendientes[indice]
-            sesion.esperando_confirmacion_tarea = False
-            sesion.opciones_pendientes.clear()
-            if DEBUG_MODE:
-                print(f"DEBUG COMANDO: '{comando}'")
-            try:
-                proc = subprocess.Popen([comando], env=os.environ.copy())
-                if DEBUG_MODE:
-                    print(f"DEBUG PID: {proc.pid}")
-                return f"Ejecutando {nombre}..."
-            except Exception as e:
-                if DEBUG_MODE:
-                    print(f"DEBUG ERROR: {type(e).__name__}: {e}")
-                return f"No pude abrir {nombre}."
-
-    if texto_original.strip().lower().replace("í", "i") in ["si", "s", "yes", "y"]:
-        sesion.esperando_confirmacion_tarea = False
-        comando = ALIAS_PROGRAMAS.get(sesion.plan_pendiente, None)
-        if not comando:
-            comando = shutil.which(sesion.plan_pendiente)
-        if not comando:
-            primera_palabra = sesion.plan_pendiente.split()[0]
-            comando = shutil.which(primera_palabra)
-        if comando:
-            try:
-                subprocess.Popen([comando], env=os.environ.copy())
-                return f"Ejecutando {sesion.plan_nombre}..."
-            except Exception as e:
-                if DEBUG_MODE:
-                    print(f"DEBUG ERROR: {type(e).__name__}: {e}")
-                return f"No pude abrir {sesion.plan_pendiente}."
-        else:
-            return f"No encontré {sesion.plan_pendiente} en el sistema."
-    else:
-        sesion.esperando_confirmacion_tarea = False
-        sesion.plan_pendiente = ""
+    """Solo una respuesta explícita de la sesión autoriza una aplicación permitida."""
+    choice = texto_original.strip().casefold().replace("í", "i")
+    target, name = "", ""
+    if sesion.opciones_pendientes and choice in ("a", "b", "c", "d"):
+        index = ("a", "b", "c", "d").index(choice)
+        if index < len(sesion.opciones_pendientes):
+            name, target = sesion.opciones_pendientes[index]
+    elif choice in ("si", "s", "yes", "y") and not sesion.opciones_pendientes:
+        target, name = sesion.plan_pendiente, sesion.plan_nombre
+    sesion.esperando_confirmacion_tarea = False
+    sesion.opciones_pendientes.clear()
+    sesion.plan_pendiente = sesion.plan_nombre = ""
+    if not target:
         return "Tarea cancelada."
+    if abrir_programa(target, confirmado=True):
+        return f"Ejecutando {name}..."
+    return f"No pude abrir {name}; revisá los permisos de aplicaciones."
 
 
 def _cerrar_turno(sesion, texto_original, respuesta, len_historial_antes):

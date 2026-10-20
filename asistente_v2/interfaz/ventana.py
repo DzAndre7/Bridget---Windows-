@@ -84,6 +84,7 @@ class API:
         """Genera el audio de una respuesta con Enceladus y lo devuelve en base64."""
         import base64
         from core import voice
+        ruta = None
         try:
             # Reusamos la generación de voice.py: genera el archivo
             ruta = voice.generar_audio(texto)
@@ -96,6 +97,12 @@ class API:
         except Exception as e:
             print(f"Error generando voz: {e}")
             return ""
+        finally:
+            if ruta:
+                try:
+                    os.unlink(ruta)
+                except OSError:
+                    pass
 
     def iniciar_microfono(self):
         """Empieza a grabar del micrófono."""
