@@ -49,7 +49,7 @@ def _es_nota_valida(ruta):
         ruta.resolve(strict=True).relative_to(vault)
         return not any(p.is_symlink() or getattr(p.lstat(), "st_file_attributes", 0) & 0x400
                        for p in (ruta, *ruta.parents) if p != vault and vault in p.parents)
-    except (OSError, ValueError):
+    except (OSError, ValueError, RuntimeError):
         return False
 
 def listar_notas():

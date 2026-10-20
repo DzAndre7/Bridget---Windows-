@@ -185,3 +185,27 @@ def test_authorized_app_proposal_does_not_need_ollama():
     assert "¿Lo abro?" in scope[function.name]("abri editor", "abrí editor", session, "Bridget")
     assert session.esperando_confirmacion_tarea and session.plan_pendiente == "editor"
     llm.assert_not_called()
+
+
+@pytest.mark.parametrize("command", ["hola", "escuchame", "modo voz"])
+def test_cli_keeps_running_after_component_failure(command, monkeypatch, capsys):
+    from core import agenda
+    source = Path(__file__).parents[1] / "main.py"
+    function = next(n for n in ast.parse(source.read_text(encoding="utf-8")).body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    session = SimpleNamespace(historial_anterior=[])
+    failure = Mock(side_effect=OSError("unavailable"))
+    scope = {"sesiones": SimpleNamespace(abrir_sesion=lambda **k: session),
+             "ASSISTANT_NAME": "Bridget", "ASSISTANT_CREATOR": "Usuario",
+             "brain": SimpleNamespace(_llm_directo=Mock()), "usar_sink_de_frases": Mock(),
+             "obtener_saludo": lambda: "Hola", "obtener_nombre_preferido": lambda: None,
+             "procesar_comando": failure, "escuchar": failure,
+             "modo_voz_interrumpible": failure, "VOZ_ACTIVADA": False,
+             "hablar_por_frases": Mock()}
+    monkeypatch.setattr(agenda, "iniciar_avisador", Mock())
+    monkeypatch.setattr("builtins.input", Mock(side_effect=[command, "salir"]))
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), "exec"), scope)
+    scope[function.name]()
+    output = capsys.readouterr().out
+    assert "Revisá" in output or "revisá" in output
+    assert "Nos vemos" in output
+    failure.assert_called_once()

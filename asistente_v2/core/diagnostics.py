@@ -3,6 +3,7 @@ import argparse
 import importlib.metadata
 import json
 import os
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -38,7 +39,7 @@ def ollama_status():
     return [m["name"] for m in models if isinstance(m, dict) and isinstance(m.get("name"), str)]
 
 
-def report(*, probe_ollama=False, audio_devices=False):
+def report(*, probe_ollama=False, audio_devices=False, native_imports=False):
     # El diagnóstico sigue funcionando sin python-dotenv instalado.
     try:
         import config
@@ -103,6 +104,17 @@ def report(*, probe_ollama=False, audio_devices=False):
             add("ollama_servicio", "untested", "Usar --probe-ollama para consultar el servicio local; no descarga modelos")
     except (OSError, ValueError, KeyError, TypeError):
         add("ollama_servicio", "error", "Endpoint inválido, servicio inaccesible o respuesta inválida")
+    if native_imports:
+        # Solo módulos fijos instalados por el usuario. No modelos ni código LLM.
+        for module in ("numpy", "sounddevice", "scipy", "faster_whisper", "webrtcvad", "webview"):
+            try:
+                process = subprocess.run(
+                    [sys.executable, "-I", "-c", "import importlib,sys; importlib.import_module(sys.argv[1])", module],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15, check=False,
+                )
+                add("import/" + module, "ok" if process.returncode == 0 else "error", "Import verificado" if process.returncode == 0 else "Import falló: dependencia o runtime nativo ausente")
+            except (OSError, subprocess.TimeoutExpired):
+                add("import/" + module, "error", "Import no terminó o no se pudo iniciar")
     if audio_devices:
         try:
             import sounddevice as sd
@@ -119,10 +131,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe-ollama", action="store_true")
     parser.add_argument("--audio-devices", action="store_true")
+    parser.add_argument("--native-imports", action="store_true", help="Importa módulos fijos en procesos separados; no activa hardware/modelos")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--strict", action="store_true", help="Devuelve 1 si faltan dependencias de texto o hay errores")
     args = parser.parse_args(argv)
-    result = report(probe_ollama=args.probe_ollama, audio_devices=args.audio_devices)
+    result = report(probe_ollama=args.probe_ollama, audio_devices=args.audio_devices, native_imports=args.native_imports)
     if args.json:
         print(json.dumps(result, ensure_ascii=True, indent=2))
     else:

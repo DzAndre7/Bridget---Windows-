@@ -156,3 +156,18 @@ def test_ollama_probe_no_proxy_no_redirect_bounded(monkeypatch):
     response.read.return_value = b"x" * (1024 * 1024 + 1)
     with pytest.raises(ValueError):
         diagnostics.ollama_status()
+
+
+def test_native_diagnostic_uses_only_fixed_imports_and_timeout(monkeypatch):
+    run = Mock(return_value=SimpleNamespace(returncode=0))
+    monkeypatch.setattr(diagnostics.subprocess, "run", run)
+    checks = diagnostics.report(native_imports=True)["checks"]
+    assert len([c for c in checks if c["component"].startswith("import/") and c["status"] == "ok"]) == 6
+    for call in run.call_args_list:
+        assert call.args[0][-1] in {"numpy", "sounddevice", "scipy", "faster_whisper", "webrtcvad", "webview"}
+        assert call.kwargs["timeout"] == 15
+        assert call.kwargs["stderr"] == diagnostics.subprocess.DEVNULL
+        assert "-I" in call.args[0] and not call.kwargs.get("shell", False)
+    run.side_effect = diagnostics.subprocess.TimeoutExpired("python", 15)
+    checks = diagnostics.report(native_imports=True)["checks"]
+    assert all(c["status"] == "error" for c in checks if c["component"].startswith("import/"))
