@@ -31,7 +31,7 @@ def run(*, local_models=False):
         cli_env = dict(os.environ, BRIDGET_VOICE="0")
         cli = subprocess.run(
             [sys.executable, str(Path(__file__).resolve().parent / "launch.py"), "text"],
-            input="hola\nqué hora es\nsalir\n", encoding="utf-8", capture_output=True,
+            input="hola\nque hora es\nsalir\n", encoding="utf-8", capture_output=True,
             cwd=directory, env=cli_env, timeout=15, check=True,
         )
         assert "Son las" in cli.stdout and "Nos vemos" in cli.stdout

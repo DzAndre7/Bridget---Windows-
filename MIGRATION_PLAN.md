@@ -1,5 +1,85 @@
 # Migración y estabilización de Bridget para Windows 10/11
 
+## Actualización 2026-10-20: funciones principales e instalación Windows 11
+
+Se continúa únicamente `migration/windows-stage-1`, desde `efd80b5`, actualizando
+el PR #1 sin fusionar ni escribir en `main`/Bridget original.
+
+### Funciones adaptadas y verificadas sin sandbox experimental
+
+- Rutas temporales únicas con handles cerrados antes de reabrir (Windows),
+  limpieza aun si falla transcripción/síntesis, captura de pantalla en memoria;
+  no queda uso operativo de `/tmp` ni `paplay` en producción. Rutas POSIX siguen
+  reconocidas y ahora también rutas Windows con espacios y Unicode entre comillas.
+- PortAudio para reproducción/captura en ambos SO, selección explícita de
+  dispositivos, interrupción por objeto de reproducción y buffers máximos de
+  60 s. Whisper permanece perezoso CPU/int8; no se descarga en instalación.
+- SAPI/System.Speech como TTS Windows sin claves ni Coqui; conserva Google/Coqui
+  como proveedores opcionales. Notificaciones Windows mediante WinForms y Linux
+  mediante `notify-send`; texto por JSON/stdin a scripts fijos, nunca interpolado.
+- Aplicaciones por allowlist local con ejecutables absolutos, confirmación
+  consumida por sesión y revalidación al abrir. No shell/argumentos ni batch;
+  navegador y automatización son opt-in. `FAILSAFE=True`; import de PyAutoGUI
+  perezoso. Un alias permitido puede proponerse sin consultar al LLM.
+- Cliente Ollama común perezoso: HTTP loopback, sin credenciales/rutas/proxy ni
+  redirects y con timeout. Modelos configurables por entorno/archivo explícito.
+  La CLI conserva conversación de texto si fallan servicio o audio.
+- Estado configurable fuera del checkout con launcher; rutas históricas
+  preservadas sin override. JSON principal atómico y transacciones por hilo;
+  semántica identifica modelo y rechaza vectores/dimensiones inválidas sin
+  sobrescribir archivos dañados. Notas Obsidian portables, sin traversal,
+  nombres reservados ni lectura de enlaces fuera del vault.
+- Instalador PowerShell como usuario estándar y alternativa Python manual.
+  Locks Text (26 paquetes) y Voice (48) con hashes de wheels Windows CPython
+  3.11; extensión GUI con versiones fijadas, aún sin lock del build fuente.
+  No configura arranque automático ni instala hipervisores/servicios/modelos.
+- Diagnóstico stdlib de paquetes, servicios/modelos locales, datos/vault,
+  permisos de apps y WebView2; opt-ins para enumeración de dispositivos y
+  imports nativos en procesos separados de diagnóstico (no son un sandbox).
+  Smoke sintético seguro y opción explícita para probar Ollama real.
+
+**Se conserva el cierre de ejecución dinámica insegura.** No se modifica la
+fábrica para seleccionar QEMU y ninguna comprobación de instalación lo activa.
+
+### Evidencia y límites
+
+- Codex/Linux, entorno virtual separado: **255 tests aprobados / 5 Win32
+  omitidos**, Ruff aprobado; smoke real del núcleo sin escritorio/modelos.
+- Regresión adicional revisada: **71 aprobados** de conversación, streaming,
+  agenda, optimizaciones, cerebro y memoria proactiva, usando dobles de LLM.
+- CI Windows Server: instalación limpia Text y Voice+GUI, `pip check`, smoke,
+  imports nativos de sounddevice/scipy/faster-whisper/VAD/webview y diagnóstico
+  aprobados. Se verificó síntesis SAPI real a WAV, sin reproducción/hardware.
+  El job Linux valida además instalación limpia de texto. CI sobre `0f99cd4`:
+  **260 aprobados Windows**, **255 aprobados/5 omitidos Ubuntu**, Ruff aprobado;
+  instalación Windows y Linux aprobadas.
+  [Ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39348483658).
+- El diagnóstico local confirmó que Ollama no está disponible; no se probaron modelos reales en Codex ni se usaron micrófono/parlantes,
+  escritorio interactivo, vault personal o automatización real. No se ejecutó
+  código generado. Instalar/importar no acredita calidad STT/TTS ni seguridad
+  del sandbox.
+
+### Qué resolver primero en Windows 11
+
+1. **P0:** instalar Text con Python 3.11 x64; preparar Ollama/modelos elegidos;
+   ejecutar diagnóstico y `smoke.py --ollama` con datos sintéticos. Registrar
+   RAM/VRAM/latencia y errores de servicio/modelos, sin datos personales.
+2. **P0:** comprobar Voice/SAPI y permisos/dispositivos reales (USB/Bluetooth,
+   eco, barge-in, cancelación y WAV limpios), después ventana/WebView2 y avisos.
+3. **P1:** vault de prueba, permisos explícitos de aplicaciones y actualización
+   conservando estado. No abrir dos procesos sobre los mismos JSON; falta lock
+   entre procesos y migración/reindexado automático al cambiar embeddings.
+4. **P1:** wheelhouse GUI con build fijado, perfiles completos de API/documentos,
+   instalación Coqui/CPU-CUDA y librerías nativas pendientes. Linux hardware y
+   Windows 10 son regresiones futuras, además de CI sin dispositivos.
+5. **Separado/P0 antes de ejecución generada:** siguen pendientes imagen,
+   aislamiento y endurecimiento QEMU/WHPX; esta vista previa no depende de ello.
+
+Guía paso a paso, limitaciones y matriz física:
+[docs/WINDOWS11.md](docs/WINDOWS11.md). Lo que sigue es historial de etapas
+anteriores, con sus propios resultados y pendientes de entonces.
+
+
 ## Actualización: primer controlador experimental de máquina virtual
 
 Sobre `migration/windows-stage-1`, partiendo de `da71d053a58960d26c2b74f95453a6bcb4ac3eba`.

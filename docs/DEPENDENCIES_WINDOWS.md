@@ -1,8 +1,10 @@
 # Dependencias Windows: perfiles y validación pendiente
 
-Objetivo inicial: Windows 11 x64, Python 3.11. Windows 10 queda como matriz de
-regresión futura. Los perfiles contienen dependencias directas y rangos; todavía
-no son un lock completo validado mediante instalación y pruebas en Windows.
+Objetivo: Windows 11 x64, Python 3.11. Windows 10 queda como matriz futura.
+La vista previa usa locks Text/Voice con versiones y hashes de wheels, y un
+instalador comprobado en CI Windows Server. Seguir [WINDOWS11.md](WINDOWS11.md)
+para instalación y diagnóstico. Los perfiles completos históricos de abajo
+conservan rangos y requieren validación adicional; no son esos locks.
 
 ## Perfiles
 
@@ -29,7 +31,9 @@ no instalar simultáneamente la distribución antigua `webrtcvad`.
 La carga local de Coqui ahora selecciona CPU si CUDA no está disponible. No se
 han probado todavía los modelos ni la compatibilidad del fork con el modelo
 `tts_models/es/css10/vits`; esa verificación pertenece a Windows y al perfil
-completo de voz. Los caminos `paplay`, `notify-send` y `/tmp` siguen pendientes.
+completo de voz. La vista previa reemplaza `paplay` por PortAudio, usa temporales únicos del SO
+y notificaciones por plataforma. SAPI permite TTS Windows sin Coqui; Linux
+conserva Coqui/Google. El perfil completo Coqui no se acreditó en esta entrega.
 
 ## Instalación para validación nativa
 

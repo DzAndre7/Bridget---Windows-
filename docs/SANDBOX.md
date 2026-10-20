@@ -1,5 +1,10 @@
 # Aislamiento: diseño y estado de implementación
 
+Las funciones de conversación, memoria, audio y aplicaciones autorizadas tienen
+un camino independiente del sandbox: ver [instalación Windows 11](WINDOWS11.md).
+El diagnóstico y sus imports fijos son herramientas de confianza, no ejecutan
+código generado ni habilitan el proveedor experimental.
+
 ## Qué funciona hoy
 
 La API de sandbox se importa en Windows y Linux usando solo biblioteca estándar.
