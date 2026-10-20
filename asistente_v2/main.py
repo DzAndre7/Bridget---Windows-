@@ -164,11 +164,18 @@ def main():
         user_input = input(f"{nombre_usuario}: ")
 
         if user_input.lower().strip() == "escuchame":
-            user_input = escuchar()
+            try:
+                user_input = escuchar()
+            except Exception:
+                print("No pude usar el micrófono. Instalá Voice y revisá permisos/dispositivo en el diagnóstico.")
+                continue
             print(f"{nombre_usuario} (voz): {user_input}")
 
         if user_input.lower().strip() in ["modo voz", "modo audio", "manos libres"]:
-            modo_voz_interrumpible(sesion)
+            try:
+                modo_voz_interrumpible(sesion)
+            except Exception:
+                print("No pude iniciar voz. Revisá el perfil Voice, sus modelos y dispositivos.")
             continue
 
         if user_input.lower().strip() in ["activar voz", "activá voz", "modo texto", "silencio", "callate"]:
@@ -203,7 +210,10 @@ def main():
             respuesta = "No pude generar una respuesta."
         print(f"{ASSISTANT_NAME}: {respuesta}")
         if VOZ_ACTIVADA:
-            _hablar_respuesta(respuesta)
+            try:
+                _hablar_respuesta(respuesta)
+            except Exception:
+                print("La respuesta de texto sigue disponible. Revisá TTS y dispositivo de salida.")
 
 if __name__ == "__main__":
     main()

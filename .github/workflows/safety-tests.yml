@@ -47,3 +47,18 @@ jobs:
         run: .venv/Scripts/python.exe -c "import sounddevice, scipy, faster_whisper, webrtcvad, webview; print('Native imports OK')"
       - name: Check diagnostic without services or hardware
         run: .venv/Scripts/python.exe scripts/diagnose.py --json --strict
+
+  install-linux-text:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r requirements/base.txt
+      - run: .venv/bin/python -m pip check
+      - run: .venv/bin/python scripts/smoke.py
