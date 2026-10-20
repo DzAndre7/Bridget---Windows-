@@ -951,14 +951,13 @@ def _cmd_convertir_documento(texto, texto_original, sesion, assistant_name):
 
 
 def _cmd_leer_archivo(texto, texto_original, sesion, assistant_name):
-    rutas = re.findall(r'[~/][\w/\.\-]+', texto_original)
-    if rutas:
-        ruta = os.path.expanduser(rutas[0])
+    ruta = extraer_ruta_archivo(texto_original)
+    if ruta:
+        ruta = os.path.expanduser(ruta)
         contenido = leer_archivo(ruta)
-        if contenido:
+        if contenido is not None:
             return consultar_llama(f"El usuario te pidió: {texto_original}\n\nContenido del archivo:\n{contenido}", sesion)
-        else:
-            return f"No pude leer el archivo {ruta}."
+        return f"No pude leer el archivo {ruta}."
     return "No encontré ninguna ruta de archivo en tu mensaje."
 
 

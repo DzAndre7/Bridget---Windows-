@@ -209,3 +209,16 @@ def test_cli_keeps_running_after_component_failure(command, monkeypatch, capsys)
     assert "Revisá" in output or "revisá" in output
     assert "Nos vemos" in output
     failure.assert_called_once()
+
+
+def test_read_handler_uses_portable_path_without_losing_case_spaces():
+    source = Path(__file__).parents[1] / "core/brain.py"
+    function = next(n for n in ast.parse(source.read_text(encoding="utf-8")).body if isinstance(n, ast.FunctionDef) and n.name == "_cmd_leer_archivo")
+    reader, llm = Mock(return_value="contenido sintético"), Mock(return_value="resumen")
+    scope = {"extraer_ruta_archivo": extraer_ruta_archivo, "os": os,
+             "leer_archivo": reader, "consultar_llama": llm}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), "exec"), scope)
+    text = 'leé "C:\\Notas grandes\\Idea Á.md"'
+    assert scope[function.name](text.lower(), text, None, "Bridget") == "resumen"
+    reader.assert_called_once_with('C:\\Notas grandes\\Idea Á.md')
+    assert "contenido sintético" in llm.call_args.args[0]
