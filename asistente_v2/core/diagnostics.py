@@ -39,6 +39,11 @@ def ollama_status():
 
 
 def report(*, probe_ollama=False, audio_devices=False):
+    # El diagnóstico sigue funcionando sin python-dotenv instalado.
+    try:
+        import config
+    except ModuleNotFoundError:
+        config = None
     checks = []
 
     def add(component, status, detail):
@@ -58,6 +63,8 @@ def report(*, probe_ollama=False, audio_devices=False):
     add("datos", "ok" if parent.is_dir() and os.access(parent, os.W_OK) else "warning", "Directorio de datos disponible" if data.is_dir() else "El launcher debe crear el directorio de datos")
     vault = os.environ.get("VAULT_PATH")
     add("obsidian", "ok" if vault and Path(vault).is_absolute() and Path(vault).is_dir() else "missing", "Vault configurado; no se leen notas" if vault else "VAULT_PATH opcional sin configurar")
+    from core.app_permissions import approved_apps
+    add("aplicaciones", "ok", f"{len(approved_apps())} aplicaciones autorizadas; cada apertura requiere confirmación")
     from core import sandbox
     state = sandbox.estado_aislamiento()
     add("ejecucion_dinamica", "blocked" if not state.disponible else "error", "Debe permanecer bloqueada; QEMU no se activa")
@@ -86,9 +93,10 @@ def report(*, probe_ollama=False, audio_devices=False):
         add("ollama_endpoint", "ok", host)
         if probe_ollama:
             models = ollama_status()
-            from config import MODELO_CONVERSACION, MODELO_EMBEDDINGS, MODELO_VISION
             add("ollama_servicio", "ok", "Servicio local respondió; modelos: " + str(len(models)))
-            for role, model in [("chat", MODELO_CONVERSACION), ("embeddings", MODELO_EMBEDDINGS), ("vision", MODELO_VISION)]:
+            for role, model in [("chat", getattr(config, "MODELO_CONVERSACION", "dolphin3:8b")),
+                                ("embeddings", getattr(config, "MODELO_EMBEDDINGS", "nomic-embed-text-v2-moe")),
+                                ("vision", getattr(config, "MODELO_VISION", "llava"))]:
                 normalized = model if ":" in model else model + ":latest"
                 add("modelo/" + role, "ok" if model in models or normalized in models else "missing", model)
         else:
@@ -120,5 +128,5 @@ def main(argv=None):
     else:
         for item in result["checks"]:
             print(f"[{item['status']}] {item['component']}: {item['detail']}")
-    failed = any(c["status"] == "error" or (c["component"].startswith("texto/") and c["status"] == "missing") for c in result["checks"])
+    failed = any(c["status"] == "error" or ((c["component"].startswith("texto/") or c["component"] in {"modelo/chat", "modelo/embeddings"}) and c["status"] == "missing") for c in result["checks"])
     return 1 if args.strict and failed else 0

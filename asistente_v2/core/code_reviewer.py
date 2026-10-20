@@ -1,10 +1,11 @@
 import os
 from groq import Groq
 from dotenv import load_dotenv
+from config import ENV_FILE
 
 from config import MODELO_REVISOR
 
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"))
+load_dotenv(ENV_FILE)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 

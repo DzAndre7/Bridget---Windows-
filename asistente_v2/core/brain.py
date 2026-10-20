@@ -410,15 +410,16 @@ def escribir_archivo(ruta, contenido):
 # (minúsculas, sin tildes); `texto_original` es lo que escribió el usuario.
 
 def _cmd_ejecutar_tarea(texto, texto_original, sesion, assistant_name):
-    # Verificación interna: va por _llm_directo, NO por consultar_llama.
-    # Antes este prompt entraba al historial y al dataset (aparecía
-    # "¿El siguiente mensaje pide...?" como si lo hubiera dicho el usuario)
-    # y con voz activa el asistente decía "sí"/"no" en voz alta.
-    verificacion = _llm_directo(f"¿El siguiente mensaje pide explícitamente abrir o ejecutar una aplicación o programa? Respondé solo 'sí' o 'no'. Mensaje: '{texto_original}'", max_tokens=5)
-    if "no" in verificacion.lower():
-        return consultar_llama(texto_original, sesion)
-    programa = extraer_programa_con_llama(texto_original)
+    # Primero búsqueda determinística: no hace falta un LLM para abrir un alias
+    # autorizado. El fallback solo propone; nunca concede permisos ni ejecuta.
+    programa = normalizar_nombre_programa(extraer_objeto_apertura(texto)) or ""
     resultados = buscar_aplicaciones_sistema(programa)
+    if not resultados:
+        try:
+            programa = extraer_programa_con_llama(texto_original)
+            resultados = buscar_aplicaciones_sistema(programa)
+        except Exception:
+            return "No encontré una aplicación autorizada. Revisá applications.json y el diagnóstico de Ollama."
 
     if len(resultados) == 0:
         return f"No encontré ninguna aplicación autorizada que coincida con '{programa}' en el sistema."

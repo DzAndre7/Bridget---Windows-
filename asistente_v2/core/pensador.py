@@ -10,10 +10,11 @@ llama decide el fallback (responder con el modelo local, avisando).
 import os
 
 from dotenv import load_dotenv
+from config import ENV_FILE
 
 from config import MODELO_REVISOR, ASSISTANT_NAME, ASSISTANT_CREATOR
 
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env"))
+load_dotenv(ENV_FILE)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 

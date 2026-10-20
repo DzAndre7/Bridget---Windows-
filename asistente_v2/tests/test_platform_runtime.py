@@ -170,3 +170,18 @@ def test_notifications_linux_and_windows(monkeypatch):
     monkeypatch.setattr(notifications, "sys", SimpleNamespace(platform="win32"))
     assert notifications.notify("Bridget", "recordatorio")
     assert native.call_args.args[0] == windows_native.NOTIFY_SCRIPT
+
+
+def test_authorized_app_proposal_does_not_need_ollama():
+    source = Path(__file__).parents[1] / "core/brain.py"
+    function = next(n for n in ast.parse(source.read_text(encoding="utf-8")).body if isinstance(n, ast.FunctionDef) and n.name == "_cmd_ejecutar_tarea")
+    llm = Mock(side_effect=AssertionError("No Ollama required"))
+    scope = {"normalizar_nombre_programa": lambda name: name,
+             "extraer_objeto_apertura": lambda text: "editor",
+             "buscar_aplicaciones_sistema": lambda term: [("editor", "editor")],
+             "extraer_programa_con_llama": llm}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), "exec"), scope)
+    session = SimpleNamespace(esperando_confirmacion_tarea=False, plan_pendiente="", plan_nombre="")
+    assert "¿Lo abro?" in scope[function.name]("abri editor", "abrí editor", session, "Bridget")
+    assert session.esperando_confirmacion_tarea and session.plan_pendiente == "editor"
+    llm.assert_not_called()

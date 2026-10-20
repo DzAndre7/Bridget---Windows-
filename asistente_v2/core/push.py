@@ -6,8 +6,9 @@ import os
 import json
 from pywebpush import webpush, WebPushException
 from dotenv import load_dotenv
+from config import ENV_FILE
 
-load_dotenv()
+load_dotenv(ENV_FILE)
 
 DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # asistente_v2/
 RUTA_SUSCRIPCION = os.path.join(DIR, "push_subscription.json")

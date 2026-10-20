@@ -199,3 +199,15 @@ def test_hands_free_unique_file_and_json_callback(fake_audio, monkeypatch):
     assert paths and not Path(paths[0]).exists()
     js = hands._ventana.evaluate_js.call_args.args[0]
     assert js.startswith('window.recibirVozManosLibres("')
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Síntesis SAPI nativa de Windows")
+def test_native_sapi_fixed_phrase_to_wav_without_playing(tmp_path):
+    # Programa fijo de confianza; sintetiza a disco y no abre dispositivo de audio.
+    from core.windows_native import synthesize
+    path = tmp_path / "prueba á.wav"
+    synthesize("Prueba de Bridget", path)
+    with wave.open(str(path), "rb") as source:
+        assert source.getnframes() > 0
+        assert source.getnchannels() in (1, 2)
+        assert source.getsampwidth() in (1, 2, 3, 4)

@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(Path(os.environ.get("BRIDGET_ENV_FILE", Path(__file__).resolve().parents[1] / ".env")))
+ENV_FILE = Path(os.environ.get("BRIDGET_ENV_FILE", Path(__file__).resolve().parents[1] / ".env"))
+load_dotenv(ENV_FILE)
 
 # ÚNICO lugar donde se elige el nombre del asistente y de su creador.
 # Todo el proyecto (prompts, ventana, context.md, sandbox) lee de acá:

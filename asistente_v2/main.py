@@ -195,7 +195,10 @@ def main():
 
         # streaming por frases solo si la voz está activada
         usar_sink_de_frases(hablar_por_frases if VOZ_ACTIVADA else None)
-        respuesta = procesar_comando(user_input, ASSISTANT_NAME, sesion)
+        try:
+            respuesta = procesar_comando(user_input, ASSISTANT_NAME, sesion)
+        except Exception:
+            respuesta = "No pude completar el pedido. Revisá el diagnóstico y que Ollama tenga el modelo configurado."
         if respuesta is None:
             respuesta = "No pude generar una respuesta."
         print(f"{ASSISTANT_NAME}: {respuesta}")

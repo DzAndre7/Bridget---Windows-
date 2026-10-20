@@ -4,8 +4,9 @@ import re
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
+from config import ENV_FILE
 
-load_dotenv()
+load_dotenv(ENV_FILE)
 
 
 def _get_vault_path():

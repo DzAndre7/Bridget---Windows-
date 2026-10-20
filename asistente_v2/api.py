@@ -1,8 +1,8 @@
 
-from config import ASSISTANT_NAME
+from config import ASSISTANT_NAME, ENV_FILE
 from core.runtime_paths import APP_DIR, data_file
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(ENV_FILE)
 from core import push as push_mod
 from fastapi import FastAPI, HTTPException, Header, Request, UploadFile, File
 from pydantic import BaseModel
@@ -141,19 +141,19 @@ async def audio(file: UploadFile = File(...), x_api_key: str = Header(None), x_s
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
+    return FileResponse(str(APP_DIR / "static/index.html"))
 
 
 # El service worker debe servirse desde la raíz: su alcance (scope) es el
 # directorio del que se sirve, y desde /static solo podría cachear /static.
 @app.get("/sw.js")
 async def service_worker():
-    return FileResponse("static/sw.js", media_type="application/javascript")
+    return FileResponse(str(APP_DIR / "static/sw.js"), media_type="application/javascript")
 
 
 @app.get("/manifest.json")
 async def manifest():
-    return FileResponse("static/manifest.json", media_type="application/manifest+json")
+    return FileResponse(str(APP_DIR / "static/manifest.json"), media_type="application/manifest+json")
 
 
 @app.get("/historial")

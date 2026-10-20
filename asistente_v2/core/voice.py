@@ -5,11 +5,12 @@ import threading
 import queue
 from contextlib import contextmanager
 from dotenv import load_dotenv
+from config import ENV_FILE
 
 from core.runtime_paths import temporary_file
 from core.audio_io import play_wav
 
-load_dotenv()
+load_dotenv(ENV_FILE)
 
 _print_original = print
 
