@@ -85,7 +85,8 @@ if (-not (Test-Path '.env')) { Copy-Item config/windows.env.example .env }
 Si `.env` ya existe, editarlo conservando sus valores; no sobrescribirlo con el
 ejemplo. Usar rutas `C:/...` en el archivo. Alternativamente definir
 `BRIDGET_ENV_FILE` con la ruta absoluta de tu configuración. Variables existentes
-del proceso tienen precedencia. No subir `.env`, claves, datos ni diagnósticos
+del proceso tienen precedencia. Reiniciar Bridget después de cambiar modelos
+o dispositivos en la configuración. No subir `.env`, claves, datos ni diagnósticos
 personales al repositorio.
 
 Instalar e iniciar Ollama desde su distribución oficial. Solo se acepta un
@@ -187,7 +188,7 @@ En Windows permitir acceso al micrófono a aplicaciones de escritorio desde
 Configuración > Privacidad y seguridad > Micrófono. Probar auriculares primero
 para evitar que Bridget transcriba su propia salida.
 
-- Captura mono 16 kHz/int16; fragmentos y WAV temporales únicos cerrados antes de
+- Captura mono 16 kHz/int16 (el dispositivo/driver debe admitir ese formato); fragmentos y WAV temporales únicos cerrados antes de
   reabrirlos (compatible Windows). Capturas continuas y por botón acotan buffers
   a 60 s; falta validar latencia/permisos y cambios de dispositivo en PC física.
 - faster-whisper usa CPU/int8 y carga perezosa. La primera activación de voz puede
@@ -279,15 +280,15 @@ por hashes.
 
 ## Evidencia automatizada
 
-CI sobre `0f99cd4`: 260 pruebas aprobadas en Windows Server 2025, 255 aprobadas y
+CI sobre `edf09c6`: 261 pruebas aprobadas en Windows Server 2025, 256 aprobadas y
 5 omitidas en Ubuntu; Ruff aprobado, instalación limpia Text/Voice+GUI Windows
 y texto Linux con `pip check` y smoke aprobados
-([ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39348483658)).
+([ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39348783315)).
 Incluye síntesis SAPI real de una frase fija a WAV, sin reproducirla; los tests
 restantes de audio/escritorio usan controladores simulados. En Codex pasaron
 además 71 regresiones revisadas de conversación/streaming, memoria y agenda con
-LLM simulado. El smoke añade arranque real de CLI desde otro cwd en la revisión
-siguiente. Estos resultados no prueban modelos ni hardware Windows 11.
+LLM simulado. El smoke verifica el arranque real de CLI desde otro cwd. Estos resultados
+no prueban modelos ni hardware Windows 11.
 
 ## Matriz pendiente en Windows 11 físico
 

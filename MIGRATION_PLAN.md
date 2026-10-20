@@ -43,17 +43,17 @@ fábrica para seleccionar QEMU y ninguna comprobación de instalación lo activa
 
 ### Evidencia y límites
 
-- Codex/Linux, entorno virtual separado: **255 tests aprobados / 5 Win32
+- Codex/Linux, entorno virtual separado: **256 tests aprobados / 5 Win32
   omitidos**, Ruff aprobado; smoke real del núcleo sin escritorio/modelos.
 - Regresión adicional revisada: **71 aprobados** de conversación, streaming,
   agenda, optimizaciones, cerebro y memoria proactiva, usando dobles de LLM.
 - CI Windows Server: instalación limpia Text y Voice+GUI, `pip check`, smoke,
   imports nativos de sounddevice/scipy/faster-whisper/VAD/webview y diagnóstico
   aprobados. Se verificó síntesis SAPI real a WAV, sin reproducción/hardware.
-  El job Linux valida además instalación limpia de texto. CI sobre `0f99cd4`:
-  **260 aprobados Windows**, **255 aprobados/5 omitidos Ubuntu**, Ruff aprobado;
+  El job Linux valida además instalación limpia de texto. CI sobre `edf09c6`:
+  **261 aprobados Windows**, **256 aprobados/5 omitidos Ubuntu**, Ruff aprobado;
   instalación Windows y Linux aprobadas.
-  [Ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39348483658).
+  [Ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39348783315).
 - El diagnóstico local confirmó que Ollama no está disponible; no se probaron modelos reales en Codex ni se usaron micrófono/parlantes,
   escritorio interactivo, vault personal o automatización real. No se ejecutó
   código generado. Instalar/importar no acredita calidad STT/TTS ni seguridad
