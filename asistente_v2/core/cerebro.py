@@ -2,7 +2,7 @@ import os
 import re
 
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from dotenv import load_dotenv
 from config import ENV_FILE
 
@@ -32,91 +32,102 @@ def _get_vault_path():
         raise NotADirectoryError(f"La ruta del vault no es una carpeta: {vault}")
     return vault
 
-def _es_nota_valida(ruta):
-    """
-    Decide si una nota debe ser leída por Bridget.
-    Ignora las carpetas internas de Obsidian: .trash (papelera) y .obsidian (configuración de la app). El cerebro real son tus notas,
-    no la basura ni la config.
-    """
+CARPETAS_INTERNAS = frozenset({".trash", ".obsidian", ".stfolder", ".stversions", ".stignore"})
 
-    partes = ruta.parts 
-    carpetas_ignoradas = {".trash", ".obsidian"}
-    #si alguna carpeta de la ruta está en la lista negra, no es válida
-    if any(parte.casefold() in carpetas_ignoradas for parte in partes):
-        return False
+
+def _es_interno(nombre):
+    name = nombre.casefold()
+    return name in CARPETAS_INTERNAS or name.startswith((".syncthing.", "~syncthing~"))
+
+
+def _es_nota_valida(ruta, vault=None):
+    """Solo Markdown dentro del vault, sin enlaces/reparse points ni internos."""
     try:
-        vault = _get_vault_path()
+        vault = vault or _get_vault_path()
+        relative = ruta.relative_to(vault)
+        if any(_es_interno(part) for part in relative.parts):
+            return False
+        if ruta.suffix.casefold() != ".md" or not ruta.is_file():
+            return False
         ruta.resolve(strict=True).relative_to(vault)
         return not any(p.is_symlink() or getattr(p.lstat(), "st_file_attributes", 0) & 0x400
                        for p in (ruta, *ruta.parents) if p != vault and vault in p.parents)
     except (OSError, ValueError, RuntimeError):
         return False
 
+
+def _iterar_notas(vault):
+    # Podar antes de descender: tampoco recorrer versiones de Syncthing ni
+    # junctions Windows que podrían salir del vault. Todas las consultas lo usan.
+    for root, directories, files in os.walk(vault, topdown=True, followlinks=False):
+        folder = Path(root)
+        visible = []
+        for name in directories:
+            child = folder / name
+            try:
+                if not (_es_interno(name) or child.is_symlink()
+                        or getattr(child.lstat(), "st_file_attributes", 0) & 0x400):
+                    visible.append(name)
+            except OSError:
+                continue
+        directories[:] = sorted(visible, key=str.casefold)
+        for name in sorted(files, key=str.casefold):
+            note = folder / name
+            if _es_nota_valida(note, vault):
+                yield note
+
+
 def listar_notas():
-    """
-    Recorre todo el vault (incluyendo subcarpetas) y devuelve una lista
-    con la ruta de cada nota .md encontrada.
-    Es la base para que Bridget 'sepa' qué tiene en la cabeza.
-    """
-    vault = _get_vault_path()
-    notas = [n for n in vault.rglob("*.md") if _es_nota_valida(n)]
-    return notas
-   
+    """Lista notas visibles; no lee su contenido ni escribe en el vault."""
+    return list(_iterar_notas(_get_vault_path()))
+
 
 def leer_nota(nombre):
-    """
-    Busca una nota por su nombre (con o sin la extensión .md) y devuelve
-    su contenido como texto. Si hay varias con el mismo nombre, devuelve
-    la primera que encuentra. Si no existe, devuelve None.
+    """Lee UTF-8 por título, ruta relativa o absoluta dentro del vault.
+
+    Admite separadores Windows en rutas relativas; nunca abre rutas excluidas.
+    Con títulos duplicados conviene indicar subcarpeta/nota.md.
     """
     vault = _get_vault_path()
-    # normalizamos: aceptamos 'mi nota' o 'mi nota.md'
-    if not nombre.endswith(".md"):
-        nombre = nombre + ".md"
-
-    for nota in vault.rglob("*.md"):
-        if not _es_nota_valida(nota):
-            continue
-        if nota.name.lower() == nombre.lower():
-            try:
-                return nota.read_text(encoding="utf-8")
-            except Exception as e:
-                return f"[Error al leer la nota: {e}]"
+    name = str(nombre).strip()
+    local = Path(name)
+    if local.is_absolute():
+        name = local.relative_to(vault).as_posix()
+    elif PureWindowsPath(name).drive or name.startswith("\\"):
+        raise ValueError("La ruta debe pertenecer al vault configurado")
+    else:
+        name = name.replace("\\", "/")
+    relative = PurePosixPath(name)
+    if not name or any(part == ".." or _es_interno(part) for part in relative.parts):
+        raise ValueError("Ruta de nota no permitida")
+    target = relative.as_posix()
+    if relative.suffix.casefold() != ".md":
+        target += ".md"
+    for note in _iterar_notas(vault):
+        candidate = note.relative_to(vault).as_posix() if "/" in target else note.name
+        if candidate.casefold() == target.casefold():
+            return note.read_text(encoding="utf-8-sig")
     return None
 
 
 def buscar_en_notas(texto):
-    """
-    Busca un texto dentro del contenido de todas las notas.
-    Devuelve una lista de diccionarios con el nombre de la nota y un
-    fragmento de contexto donde aparece el texto.
-    Esta es la función que Bridget más va a usar: '¿qué sé sobre X?'.
-    """
-    vault = _get_vault_path()
-    texto_lower = texto.lower()
-    resultados = []
-
-    for nota in vault.rglob("*.md"):
-        if not _es_nota_valida(nota):
-            continue
+    """Búsqueda literal sin distinguir mayúsculas en nombre y contenido UTF-8."""
+    query = texto.strip().casefold()
+    if not query:
+        return []
+    results = []
+    for note in _iterar_notas(_get_vault_path()):
         try:
-            contenido = nota.read_text(encoding="utf-8")
-        except Exception:
-            continue  # si una nota falla, la salteamos sin romper todo
+            content = note.read_text(encoding="utf-8-sig")
+        except (OSError, UnicodeError):
+            continue
+        index = content.casefold().find(query)
+        if index >= 0 or query in note.stem.casefold():
+            position = max(index, 0)
+            excerpt = content[max(0, position - 80):position + 80].strip()
+            results.append({"nota": note.name, "ruta": str(note), "fragmento": f"...{excerpt}..."})
+    return results
 
-        if texto_lower in contenido.lower():
-            # buscamos la posición para dar un fragmento de contexto
-            pos = contenido.lower().find(texto_lower)
-            inicio = max(0, pos - 80)
-            fin = min(len(contenido), pos + 80)
-            fragmento = contenido[inicio:fin].strip()
-            resultados.append({
-                "nota": nota.name,
-                "ruta": str(nota),
-                "fragmento": f"...{fragmento}..."
-            })
-
-    return resultados
 
 def _limpiar_nombre_archivo(titulo):
     """
@@ -387,11 +398,9 @@ def consultar_cerebro(texto, max_notas=3):
     # palabras de la consulta matchean. (Antes se releía todo el vault una vez
     # por palabra, y luego otra vez para levantar el contenido de las top.)
     puntuadas = []
-    for nota in vault.rglob("*.md"):
-        if not _es_nota_valida(nota):
-            continue
+    for nota in _iterar_notas(vault):
         try:
-            contenido = nota.read_text(encoding="utf-8")
+            contenido = nota.read_text(encoding="utf-8-sig")
         except Exception:
             continue  # una nota rota no debe frenar la búsqueda
 

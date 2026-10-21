@@ -21,6 +21,7 @@ import re
 import unicodedata
 
 from actions.agent_actions import ALIAS_PROGRAMAS
+from core.obsidian_commands import parsear_consulta
 
 
 def normalizar_texto(texto):
@@ -178,6 +179,9 @@ def detectar_intencion(texto):
     Si nada matchea devuelve 'desconocida'; detectar() decide si consultar
     al clasificador LLM después."""
     texto = texto.lower().strip()
+    consulta_obsidian = parsear_consulta(texto)
+    if consulta_obsidian is not None:
+        return consulta_obsidian.intencion
 
     if _contiene(texto, [
         "busca en internet", "buscá en internet", "busca online", "modo conectado", "busca en la web"
@@ -414,6 +418,9 @@ def detectar_intencion(texto):
 # degradan con gracia si falta algún dato (piden la ruta, avisan, etc.).
 # "conversar" es la válvula de escape: cualquier cosa que no encaje.
 INTENCIONES_LLM = {
+    "buscar_notas_obsidian": "pide buscar texto o temas en notas Markdown de Obsidian/vault/cerebro: lectura de datos, nunca ejecución de código",
+    "listar_notas_obsidian": "pide listar las notas del vault de Obsidian: lectura de datos, nunca tests ni sandbox",
+    "leer_nota_obsidian": "pide leer o mostrar una nota Markdown de Obsidian por su título/ruta: no ejecutar ni probar su contenido",
     "buscar_en_internet": "pide buscar información en internet o en la web",
     "ejecutar_tarea": "pide abrir o ejecutar una aplicación o programa del sistema",
     "consultar_hora": "pregunta qué hora es",
@@ -468,7 +475,12 @@ def clasificar_con_llm(texto, funcion_llm):
         "comparar caminos o decisiones, explicar en profundidad temas "
         "técnicos o filosóficos. El mensaje viene de voz transcripta: puede "
         "traer palabras mal transcriptas.\n\n"
+        "Buscar, listar o leer notas de Obsidian es lectura de datos; no elegir "
+        "sandbox ni crear código para esas consultas.\n"
         "Ejemplos:\n"
+        "- \"buscá notas de Obsidian sobre Python\" -> buscar_notas_obsidian\n"
+        "- \"listá mis notas del vault\" -> listar_notas_obsidian\n"
+        "- \"leé la nota Proyecto Ágil de Obsidian\" -> leer_nota_obsidian\n"
         "- \"che, ¿tenés idea de qué hora es?\" -> consultar_hora\n"
         "- \"me gustaría mejorar mi inglés\" -> conversar\n"
         "- \"fijate cuánto sale el dólar hoy\" -> buscar_en_internet\n"

@@ -1,3 +1,5 @@
+# Importar el núcleo real para probar enrutamiento; no descarga modelos.
+-r base.txt
 pytest==8.4.2
 ruff==0.14.1
 packaging==25.0

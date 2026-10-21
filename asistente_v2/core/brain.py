@@ -22,6 +22,7 @@ import os
 import threading
 
 from core import cerebro
+from core.obsidian_commands import INTENCIONES_OBSIDIAN, resolver_consulta
 from core import intenciones
 # Re-export: la capa de comprensión vive en core/intenciones.py, pero estos
 # nombres siguen disponibles como brain.* (los usan la API, la UI y los tests).
@@ -701,6 +702,10 @@ def _cmd_mejorar_codigo(texto, texto_original, sesion, assistant_name):
         return "Código guardado."
     return "Código no guardado."
 
+def _cmd_consultar_obsidian(texto, texto_original, sesion, assistant_name):
+    return resolver_consulta(texto_original)
+
+
 def _cmd_anotar_nota(texto, texto_original, sesion, assistant_name):
     contenido = intenciones.extraer_nota_directa(texto_original)
     if not contenido:
@@ -964,6 +969,9 @@ def _cmd_leer_archivo(texto, texto_original, sesion, assistant_name):
 # Tabla de despacho: intención → manejador. Las intenciones que no figuran
 # acá (desconocida, abrir_navegador, abrir_opera…) caen en conversación normal.
 MANEJADORES = {
+    "buscar_notas_obsidian": _cmd_consultar_obsidian,
+    "listar_notas_obsidian": _cmd_consultar_obsidian,
+    "leer_nota_obsidian": _cmd_consultar_obsidian,
     "ejecutar_tarea": _cmd_ejecutar_tarea,
     "borrar_todos_los_recuerdos": _cmd_borrar_todos_los_recuerdos,
     "confirmar_borrado": _cmd_confirmar_borrado,
@@ -1080,7 +1088,7 @@ def procesar_comando(texto, assistant_name, sesion=None):
     # de fondo lo extrae y lo guarda DESPUÉS de responder (cero latencia
     # agregada al turno). Solo en sesiones persistentes: los tests y las
     # llamadas efímeras no disparan trabajo de fondo ni tocan disco.
-    if sesion.id and intencion not in ("guardar_recuerdo",) and \
+    if sesion.id and intencion not in INTENCIONES_OBSIDIAN | {"guardar_recuerdo"} and \
             memoria_auto.parece_dato_personal(texto_original):
         threading.Thread(
             target=memoria_auto.procesar_turno,

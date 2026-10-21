@@ -28,13 +28,21 @@ def run(*, local_models=False):
         assert not sandbox.estado_aislamiento().disponible
         assert sandbox.ejecutar_codigo("print('NO EJECUTAR')")["exito"] is False
         assert abrir_programa("aplicacion-no-autorizada", confirmado=True) is False
-        cli_env = dict(os.environ, BRIDGET_VOICE="0")
+        before_notes = {p.relative_to(Path(os.environ["VAULT_PATH"])): p.read_bytes()
+                        for p in Path(os.environ["VAULT_PATH"]).rglob("*.md")}
+        cli_env = dict(os.environ, BRIDGET_VOICE="0", PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
         cli = subprocess.run(
             [sys.executable, str(Path(__file__).resolve().parent / "launch.py"), "text"],
-            input="hola\nque hora es\nsalir\n", encoding="utf-8", capture_output=True,
+            input='hola\nque hora es\nlistá notas de Obsidian\nbuscá en Obsidian "funciona"\nleé la nota "Nota sintética" de Obsidian\nsalir\n', encoding="utf-8", capture_output=True,
             cwd=directory, env=cli_env, timeout=15, check=True,
         )
         assert "Son las" in cli.stdout and "Nos vemos" in cli.stdout
+        assert "Notas de Obsidian:" in cli.stdout and "Coincidencias en Obsidian:" in cli.stdout
+        assert "Nota de Obsidian: Nota sintética" in cli.stdout and "Bridget funciona" in cli.stdout
+        assert "aislamiento" not in cli.stdout
+        after_notes = {p.relative_to(Path(os.environ["VAULT_PATH"])): p.read_bytes()
+                       for p in Path(os.environ["VAULT_PATH"]).rglob("*.md")}
+        assert before_notes == after_notes
         if local_models:
             from core.local_models import ollama
             from config import MODELO_CONVERSACION
@@ -43,7 +51,7 @@ def run(*, local_models=False):
             assert response["message"]["content"].strip()
             semantic.guardar_recuerdo("Mi color de prueba es violeta")
             assert semantic.recordar("color violeta", umbral=-1)
-        return {"synthetic_smoke": "ok", "cli": "ok", "local_models": "ok" if local_models else "not_tested", "dynamic_execution": "blocked"}
+        return {"synthetic_smoke": "ok", "cli": "ok", "obsidian": "read_only_ok", "local_models": "ok" if local_models else "not_tested", "dynamic_execution": "blocked"}
 
 
 if __name__ == "__main__":
