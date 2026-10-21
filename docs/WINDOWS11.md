@@ -136,6 +136,44 @@ nuevos incluyen la identidad del modelo; no se comparan dimensiones incompatible
 recuerdos históricos sin modelo asumen el configurado: al cambiarlo, respaldar y
 reindexar explícitamente; no existe todavía migración automática del índice.
 
+### Consultas de lectura a Obsidian
+
+Estas órdenes usan un lector Markdown directo. No necesitan Ollama, ejecutar
+Python generado ni habilitar QEMU/sandbox:
+
+```text
+listá mis notas de Obsidian
+buscá notas de Obsidian sobre Python
+buscá en Obsidian "programación"
+leé la nota "Proyecto Ágil" de Obsidian
+leé la nota "proyectos/Proyecto Ágil.md" de Obsidian
+```
+
+En rutas relativas también se admite `proyectos\Proyecto Ágil.md`; las rutas
+absolutas solo se leen si pertenecen al vault configurado. Los títulos y rutas
+con espacios van entre comillas. Se admiten `.md`/`.MD`, UTF-8 y UTF-8 con BOM.
+La búsqueda literal no distingue mayúsculas y revisa título y contenido; no es
+una búsqueda semántica. Las consultas no ejecutan ni reinterpretan instrucciones
+incluidas en la nota. No inician extracción de memoria proactiva; la sesión puede
+conservar la respuesta en el historial normal fuera del vault.
+
+Se podan antes de recorrer `.trash`, `.obsidian`, `.stfolder`, `.stversions` y
+otros nombres internos/temporales de Syncthing (`.syncthing.*`, `~syncthing~*`).
+Tampoco se siguen symlinks ni junctions/reparse points. El mismo filtro se usa
+para listar, buscar, leer e incorporar notas al contexto conversacional. Los
+archivos de conflicto que sean notas normales siguen visibles.
+
+Se muestran hasta 50 rutas, 20 coincidencias o 12000 caracteres de una nota por
+respuesta, indicando recorte. No se modifica el archivo. Ante una orden no
+reconocida usar los ejemplos; no crear scripts como alternativa para consultar
+el vault. Pedir ejecutar código sigue rechazándose aunque mencione Obsidian.
+
+`python scripts/smoke.py` incluye listar/buscar/leer desde la consola real y
+comprueba que las notas sintéticas no cambian. No consulta tu vault: crea uno
+temporal propio y lo elimina al terminar. La lectura desde tu configuración
+solo ocurre al iniciar Bridget y pedirla explícitamente (o al usar el contexto
+conversacional de notas ya existente).
+
 ## 4. Diagnóstico y primera prueba
 
 Desde cualquier directorio, usando rutas absolutas si hace falta:
@@ -279,6 +317,13 @@ validados en esta entrega. No confundir esos perfiles con Text/Voice bloqueados
 por hashes.
 
 ## Evidencia automatizada
+
+Corrección de Obsidian, `fdb0d01`: 293 tests aprobados en Windows Server,
+288 aprobados/5 omitidos en Ubuntu, Ruff e instalaciones limpias aprobados.
+Los smoke de consola en ambos SO devuelven `obsidian: read_only_ok` sin alterar
+las notas sintéticas y mantienen `dynamic_execution: blocked`
+([ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39536028319)).
+Los resultados siguientes corresponden a la etapa previa.
 
 CI sobre `edf09c6`: 261 pruebas aprobadas en Windows Server 2025, 256 aprobadas y
 5 omitidas en Ubuntu; Ruff aprobado, instalación limpia Text/Voice+GUI Windows

@@ -1,5 +1,48 @@
 # Migración y estabilización de Bridget para Windows 10/11
 
+## Corrección Obsidian: consultas Markdown fuera de ejecución dinámica
+
+Se continúa `migration/windows-stage-1` desde `1057443`, manteniendo PR #1 en
+borrador y sin fusionar. No se escribe en `main`, el repositorio original ni
+notas personales del usuario.
+
+**Causa reproducida:** buscar/listar/leer notas no tenían reglas ni herramientas
+propias en el catálogo. El mensaje quedaba como `desconocida`; un clasificador
+que elegía `probar_codigo_sandbox` terminaba en el rechazo de aislamiento, aun
+con `VAULT_PATH` correcto. No era un fallo del lector por necesitar virtualización.
+
+**Corrección:** tres intenciones explícitas se resuelven mediante lectura
+Markdown directa, antes del clasificador y de las herramientas de código. El
+catálogo del LLM también distingue estas operaciones; si no hay un argumento
+reconocible se muestran instrucciones, sin generar scripts ni habilitar un motor.
+Se preservan los acentos/rutas del mensaje original y se evita iniciar memoria
+proactiva para estas consultas. El historial normal de la sesión se conserva.
+
+**Lectura del vault:** recorrido común que poda `.trash`, `.obsidian`, internos
+de Syncthing y enlaces/junctions antes de descender; `.md`/`.MD`, UTF-8/BOM,
+rutas relativas con separadores Windows y rutas absolutas confinadas al vault.
+Se usa en listado, búsqueda, lectura y contexto de conversación. Las funciones
+de escritura existentes no se usan en las nuevas consultas.
+
+**Evidencia local:** 288 tests aprobados y 5 específicos Windows omitidos; Ruff
+aprobado. Pruebas reales por `procesar_comando` sustituyen guardas de sandbox,
+LLM y escrituras por errores si se invocan y comparan bytes/mtimes de las notas.
+Una prueba inicia la CLI real desde otro cwd, consulta un vault temporal UTF-8
+y compara sus bytes; pedir ejecutar código sigue bloqueado. El smoke del instalador también incluye Obsidian. No se
+usaron servicios, micrófono, notas personales ni código generado.
+
+**CI sobre `fdb0d01`:** 293 pruebas aprobadas en Windows Server; 288 aprobadas y
+5 omitidas en Ubuntu. Ruff, instalación limpia Text/Voice+GUI Windows y texto
+Linux aprobados. Ambos smoke devuelven `obsidian: read_only_ok` y
+`dynamic_execution: blocked`.
+[Ejecución](https://github.com/DzAndre7/Bridget---Windows-/actions/runs/39536028319).
+
+Guía y comandos: [docs/WINDOWS11.md](docs/WINDOWS11.md). Estado y próximos hitos
+con gráfico: [docs/ROADMAP_WINDOWS.md](docs/ROADMAP_WINDOWS.md). Falta comprobar
+la experiencia sobre Windows 11 físico; el sandbox conserva su validación
+independiente. Las secciones siguientes son historial de etapas anteriores.
+
+
 ## Actualización 2026-10-20: funciones principales e instalación Windows 11
 
 Se continúa únicamente `migration/windows-stage-1`, desde `efd80b5`, actualizando
