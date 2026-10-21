@@ -1,0 +1,10 @@
+# Dependencias directas comunes; Python objetivo: 3.11 x64.
+# Rangos compatibles, NO un lock transitorio validado en Windows.
+ollama>=0.6,<0.7
+requests>=2.32.5,<3
+python-dotenv>=1.2,<2
+numpy==1.26.4
+ddgs>=9,<10
+groq>=0.31,<2
+# La auto-mejora necesita el linter también fuera del entorno de pruebas.
+ruff==0.14.1

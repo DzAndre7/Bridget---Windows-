@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+    <title>Bridget</title>
+    <!-- PWA: instalable desde el navegador del celular ("Agregar a pantalla
+         de inicio") — pantalla completa, ícono propio, arranque directo. -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0f12">
+    <link rel="apple-touch-icon" href="/static/icono-192.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Botón del editor (panel izquierdo) -->
+    <button id="btn-panel" aria-label="Editor">☰</button>
+
+    <!-- Panel lateral del editor de presencia -->
+    <aside id="panel">
+        <h1 class="panel-titulo">EDITOR</h1>
+        <div class="control">
+            <label>Color <span id="v-color">40, 140, 150</span></label>
+            <div class="preview-color" id="preview-color"></div>
+            <div class="rgb-fila"><span class="rgb-letra">R</span><input type="range" id="s-r" min="0" max="255" value="40"></div>
+            <div class="rgb-fila"><span class="rgb-letra">G</span><input type="range" id="s-g" min="0" max="255" value="140"></div>
+            <div class="rgb-fila"><span class="rgb-letra">B</span><input type="range" id="s-b" min="0" max="255" value="150"></div>
+        </div>
+        <div class="control"><label>Cantidad <span id="v-cant">140</span></label><input type="range" id="s-cant" min="20" max="400" value="140" step="10"></div>
+        <div class="control"><label>Dispersión <span id="v-disp">100</span></label><input type="range" id="s-disp" min="40" max="200" value="100" step="5"></div>
+        <div class="control"><label>Velocidad <span id="v-vel">100</span></label><input type="range" id="s-vel" min="10" max="300" value="100" step="10"></div>
+        <div class="control"><label>Tamaño <span id="v-sz">100</span></label><input type="range" id="s-sz" min="30" max="260" value="100" step="10"></div>
+        <div class="control"><label>Reacción <span id="v-react">100</span></label><input type="range" id="s-react" min="0" max="220" value="100" step="10"></div>
+        <div class="control"><label>Núcleo <span id="v-core">100</span></label><input type="range" id="s-core" min="0" max="300" value="100" step="10"></div>
+        <div class="control"><label>Achatamiento <span id="v-flat">78</span></label><input type="range" id="s-flat" min="40" max="100" value="78" step="2"></div>
+        <div class="control"><label>Opacidad fondo <span id="v-opac">65</span></label><input type="range" id="s-opac" min="0" max="100" value="65" step="5"></div>
+        <div class="control">
+            <button id="btn-notificaciones" style="width:100%; padding:10px; background:rgba(40,140,150,0.3); border:0.5px solid rgba(60,200,210,0.45); color:rgb(90,210,220); border-radius:8px; cursor:pointer; font-family:monospace;">Activar notificaciones</button>
+        </div>
+    </aside>
+
+    <!-- Escenario: presencia de fondo + chat encima -->
+    <main id="escenario">
+        <canvas id="bcanvas"></canvas>
+        <div id="blabel">BRIDGET</div>
+
+        <div id="chat"></div>
+
+        <div id="input-area">
+            <button id="attach" aria-label="Adjuntar">+</button>
+            <textarea id="input" placeholder="escribí acá..." autocomplete="off" rows="1"></textarea>
+            <button id="handsfree" aria-label="Manos libres">∞</button>
+            <button id="mic" aria-label="Micrófono">●</button>
+            <button id="send" aria-label="Enviar">➤</button>
+        </div>
+    </main>
+
+    <!-- Modal de Inbox -->
+    <div id="inbox-modal">
+        <div id="modal-content">
+            <div id="modal-header">
+                <span>INBOX</span>
+                <button id="modal-close">✕</button>
+            </div>
+            <div id="modal-body">
+                <div id="drop-zone">
+                    Arrastrá archivos acá<br>
+                    <span style="font-size: 10px; opacity: 0.6;">.py .txt .md .json</span>
+                </div>
+                <div id="files-list"></div>
+                <div id="selected-info">Sin archivo seleccionado</div>
+            </div>
+        </div>
+    </div>
+
+    <input id="file-input" type="file" accept=".py,.txt,.md,.json" multiple>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

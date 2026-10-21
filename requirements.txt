@@ -1,0 +1,3 @@
+# Aplicación sin acoplarse al congelado del host Linux original.
+# Windows completo: python -m pip install -r requirements/windows.txt
+-r requirements/app.txt

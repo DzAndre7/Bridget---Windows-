@@ -1,0 +1,653 @@
+{
+  "source_repository": "DzAndre7/Bridget",
+  "source_commit": "4289fa36972d7638aab7dcbf7a0186b335aa079e",
+  "target_repository": "DzAndre7/Bridget---Windows-",
+  "target_base_commit": "7409981123f11bf00181f928f9e401f72c48f431",
+  "preserved_target_files": [
+    "LICENSE",
+    "README.md"
+  ],
+  "files": [
+    {
+      "source_path": ".gitignore",
+      "destination_path": ".gitignore",
+      "source_blob_sha": "4a882a4ab848162bacb7719eb4634041e261581c",
+      "source_size": 318,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "Imagen de Bridget.png",
+      "destination_path": "Imagen de Bridget.png",
+      "source_blob_sha": "7934e2c792ea01468f015cf6d530802c2fa98c3b",
+      "source_size": 1296095,
+      "source_mode": "100644",
+      "status": "pending_connector_binary_limit"
+    },
+    {
+      "source_path": "OPTIMIZACIONES.md",
+      "destination_path": "OPTIMIZACIONES.md",
+      "source_blob_sha": "00f15832db1d337359aa1724a1d5e646942b7f5c",
+      "source_size": 5758,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "README.md",
+      "destination_path": "SOURCE_README.md",
+      "source_blob_sha": "6f89448777af591c92261ba5d56544d27df21947",
+      "source_size": 6239,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/.gitignore",
+      "destination_path": "asistente_v2/.gitignore",
+      "source_blob_sha": "cfaad761185d40177540b073395b72a2b8c6f6a8",
+      "source_size": 6,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/actions/agent_actions.py",
+      "destination_path": "asistente_v2/actions/agent_actions.py",
+      "source_blob_sha": "59e98f27c973000f395411f636729459817f0796",
+      "source_size": 2912,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/actions/system_actions.py",
+      "destination_path": "asistente_v2/actions/system_actions.py",
+      "source_blob_sha": "0d036ef2523d64a2fcc8c625b40f59ed06661a7e",
+      "source_size": 2565,
+      "source_mode": "100755",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/api.py",
+      "destination_path": "asistente_v2/api.py",
+      "source_blob_sha": "d73424c38794d70adf1b7a4903e28a88079c8e4b",
+      "source_size": 11537,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/config.py",
+      "destination_path": "asistente_v2/config.py",
+      "source_blob_sha": "c7ac6a2e731ff687af4406964b08a8d731e862fc",
+      "source_size": 2970,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "asistente_v2/context.md",
+      "destination_path": "asistente_v2/context.md",
+      "source_blob_sha": "4a8c7c519e27df0bf793e797ef1685a23118425a",
+      "source_size": 1880,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "asistente_v2/core/__init__.py",
+      "destination_path": "asistente_v2/core/__init__.py",
+      "source_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "source_size": 0,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/agenda.py",
+      "destination_path": "asistente_v2/core/agenda.py",
+      "source_blob_sha": "32e1974609d746ce4be6b35787bb998136c83dcf",
+      "source_size": 9108,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/auditoria.py",
+      "destination_path": "asistente_v2/core/auditoria.py",
+      "source_blob_sha": "757bfda20fbf0f60fc2b8542c4b8d48bce582f33",
+      "source_size": 2042,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/auto_mejora.py",
+      "destination_path": "asistente_v2/core/auto_mejora.py",
+      "source_blob_sha": "58d0dab02df52c77da133a020d6ea2923d08ac38",
+      "source_size": 12734,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/brain.py",
+      "destination_path": "asistente_v2/core/brain.py",
+      "source_blob_sha": "4b86fe5a31eeddc58d0a2bc39f544872a40a1bb9",
+      "source_size": 47669,
+      "source_mode": "100755",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/cerebro.py",
+      "destination_path": "asistente_v2/core/cerebro.py",
+      "source_blob_sha": "2a927f4d429e1d4fdac81207ee0f54c003b22e10",
+      "source_size": 14256,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/code_analyzer.py",
+      "destination_path": "asistente_v2/core/code_analyzer.py",
+      "source_blob_sha": "2f22fa3243739c0a1ade4502baca3856b25e775d",
+      "source_size": 8437,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/code_reviewer.py",
+      "destination_path": "asistente_v2/core/code_reviewer.py",
+      "source_blob_sha": "250eb2284b1a3882923893669610fb276422756f",
+      "source_size": 984,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/dataset_collector.py",
+      "destination_path": "asistente_v2/core/dataset_collector.py",
+      "source_blob_sha": "170f570079f993a2d267bcdfa1519b6b91b71cc2",
+      "source_size": 1758,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/intenciones.py",
+      "destination_path": "asistente_v2/core/intenciones.py",
+      "source_blob_sha": "74cca0353df0fa617d6970779845333af568937e",
+      "source_size": 28059,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/listen.py",
+      "destination_path": "asistente_v2/core/listen.py",
+      "source_blob_sha": "aa2e2ae76046a27885cc99bda072d2247e971ecb",
+      "source_size": 3591,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/manos_libres.py",
+      "destination_path": "asistente_v2/core/manos_libres.py",
+      "source_blob_sha": "7e07e7de80f7e7fed6e6b1c222c41d475630864d",
+      "source_size": 3854,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/memoria_auto.py",
+      "destination_path": "asistente_v2/core/memoria_auto.py",
+      "source_blob_sha": "20d5ab46f6d53a5aed41510d1e9b0fc93805f089",
+      "source_size": 4283,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/memoria_semantica.py",
+      "destination_path": "asistente_v2/core/memoria_semantica.py",
+      "source_blob_sha": "58c13e17179d1b9c318de9ae7c28d17282c7234f",
+      "source_size": 4572,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/memory.py",
+      "destination_path": "asistente_v2/core/memory.py",
+      "source_blob_sha": "08cb139987fe67f224d7d3863ec90631d35cd732",
+      "source_size": 2248,
+      "source_mode": "100755",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/microfono_ventana.py",
+      "destination_path": "asistente_v2/core/microfono_ventana.py",
+      "source_blob_sha": "ddbb1f6e1a9c66fbd2cf29a248d912e5a6189409",
+      "source_size": 1723,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/pensador.py",
+      "destination_path": "asistente_v2/core/pensador.py",
+      "source_blob_sha": "a660535ea9743f0741b52cad9bed3673f7fb0a26",
+      "source_size": 3113,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/preferences.py",
+      "destination_path": "asistente_v2/core/preferences.py",
+      "source_blob_sha": "c31090cb980c2031d1155849f92da67f2c6aee9a",
+      "source_size": 989,
+      "source_mode": "100755",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/push.py",
+      "destination_path": "asistente_v2/core/push.py",
+      "source_blob_sha": "da54446c1d02d3d3502e37b78937043b8de4a816",
+      "source_size": 2392,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/sandbox.py",
+      "destination_path": "asistente_v2/core/sandbox.py",
+      "source_blob_sha": "2205f36e16dc6947657742471ecf38adf465698e",
+      "source_size": 15576,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/search.py",
+      "destination_path": "asistente_v2/core/search.py",
+      "source_blob_sha": "e28e7cd6a172021506ed2b8f38fef0cab02f91e0",
+      "source_size": 795,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/sesiones.py",
+      "destination_path": "asistente_v2/core/sesiones.py",
+      "source_blob_sha": "9ebe3e40504c51830110f532d56b547a0e1fa0f7",
+      "source_size": 11368,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/vision.py",
+      "destination_path": "asistente_v2/core/vision.py",
+      "source_blob_sha": "771f586bf2dd199ee25bb6530ee90f806e318cbf",
+      "source_size": 906,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/core/voice.py",
+      "destination_path": "asistente_v2/core/voice.py",
+      "source_blob_sha": "9ebe5055f1571a76c793666496ff48fc77c51edd",
+      "source_size": 5386,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/inbox/.gitkeep",
+      "destination_path": "asistente_v2/inbox/.gitkeep",
+      "source_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "source_size": 0,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/interfaz/config_presencia.json",
+      "destination_path": "asistente_v2/interfaz/config_presencia.json",
+      "source_blob_sha": "8fb2ca0001a6879ee262127e60b5215847d7fe99",
+      "source_size": 98,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/interfaz/css/presencia.css",
+      "destination_path": "asistente_v2/interfaz/css/presencia.css",
+      "source_blob_sha": "4ed9318906ecba45fc90f997c272dd37be03d0d3",
+      "source_size": 6881,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/interfaz/js/presencia.js",
+      "destination_path": "asistente_v2/interfaz/js/presencia.js",
+      "source_blob_sha": "fd1d600dfb219b954d77177f38ba6c263c294b7c",
+      "source_size": 15536,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/interfaz/presencia.html",
+      "destination_path": "asistente_v2/interfaz/presencia.html",
+      "source_blob_sha": "c99a1632a8bbe6bc79ebfe83d740f52315c348eb",
+      "source_size": 3040,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/interfaz/ventana.py",
+      "destination_path": "asistente_v2/interfaz/ventana.py",
+      "source_blob_sha": "83091165dc3d007203c8ce0006a4e6332c38961f",
+      "source_size": 5978,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/legacy/README.md",
+      "destination_path": "asistente_v2/legacy/README.md",
+      "source_blob_sha": "7a02b736687cae2c2f40b65a0808287db12265d0",
+      "source_size": 295,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/legacy/listar_voces_google.py",
+      "destination_path": "asistente_v2/legacy/listar_voces_google.py",
+      "source_blob_sha": "b5f39cbd324b8ea2fd165d187aaeef62fc5c10d0",
+      "source_size": 854,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/legacy/prueba_google.py",
+      "destination_path": "asistente_v2/legacy/prueba_google.py",
+      "source_blob_sha": "76aca12703f42700a2fc7c6920b653bfc86d0413",
+      "source_size": 1653,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "asistente_v2/legacy/test_cerebro.py",
+      "destination_path": "asistente_v2/legacy/test_cerebro.py",
+      "source_blob_sha": "47c70d376c6397c62f4af4eb07941568057d3f7d",
+      "source_size": 1685,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/legacy/test_escritura.py",
+      "destination_path": "asistente_v2/legacy/test_escritura.py",
+      "source_blob_sha": "3b3f359571538f82f055e7f4bfa717e2f2dbda73",
+      "source_size": 658,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/main.py",
+      "destination_path": "asistente_v2/main.py",
+      "source_blob_sha": "3591c74e2c28a0f622d34b7eb08027f350143536",
+      "source_size": 7855,
+      "source_mode": "100755",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/reports/.gitkeep",
+      "destination_path": "asistente_v2/reports/.gitkeep",
+      "source_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "source_size": 0,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/reports/asistente_v2_20260613_150457.md",
+      "destination_path": "asistente_v2/reports/asistente_v2_20260613_150457.md",
+      "source_blob_sha": "2845206c1b344dd3c4c1bb33dc56355d83d34fa9",
+      "source_size": 22929,
+      "source_mode": "100644",
+      "status": "excluded_generated_report"
+    },
+    {
+      "source_path": "asistente_v2/reports/asistente_v2_20260613_183039.md",
+      "destination_path": "asistente_v2/reports/asistente_v2_20260613_183039.md",
+      "source_blob_sha": "6bf4cd91d0040c7c3bd0bd6d4ef7ee245831ff51",
+      "source_size": 23332,
+      "source_mode": "100644",
+      "status": "excluded_generated_report"
+    },
+    {
+      "source_path": "asistente_v2/reports/auditoria_20260615_004500.md",
+      "destination_path": "asistente_v2/reports/auditoria_20260615_004500.md",
+      "source_blob_sha": "b0f3b86d7ea30747a28c6dd3a067a98043c8c160",
+      "source_size": 65922,
+      "source_mode": "100644",
+      "status": "excluded_generated_report"
+    },
+    {
+      "source_path": "asistente_v2/reports/auditoria_20260615_011826.md",
+      "destination_path": "asistente_v2/reports/auditoria_20260615_011826.md",
+      "source_blob_sha": "d39d8ac1217d0dbba1322fbdba929d28babdda42",
+      "source_size": 64950,
+      "source_mode": "100644",
+      "status": "excluded_generated_report"
+    },
+    {
+      "source_path": "asistente_v2/static/css/style.css",
+      "destination_path": "asistente_v2/static/css/style.css",
+      "source_blob_sha": "5b013f5b843f6b0743f9db5c0ea04f7152cfe3cf",
+      "source_size": 8183,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/static/icono-192.png",
+      "destination_path": "asistente_v2/static/icono-192.png",
+      "source_blob_sha": "f3c5bafb6ac8be962fe570966dc0d3dbc650a6d6",
+      "source_size": 4045,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/static/icono-512.png",
+      "destination_path": "asistente_v2/static/icono-512.png",
+      "source_blob_sha": "39f179caa80df6bf837b68576a8a9f0210e9ea3f",
+      "source_size": 17869,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/static/index.html",
+      "destination_path": "asistente_v2/static/index.html",
+      "source_blob_sha": "728233936727da299ee030f2d8b166facec946a3",
+      "source_size": 4400,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/static/js/app.js",
+      "destination_path": "asistente_v2/static/js/app.js",
+      "source_blob_sha": "77ce9b1b91aba1a88284645a0fe033dd35dd33d4",
+      "source_size": 36302,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/static/manifest.json",
+      "destination_path": "asistente_v2/static/manifest.json",
+      "source_blob_sha": "3e2f2f3a4409e4102168f57ea3b434447f1d446b",
+      "source_size": 501,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "asistente_v2/static/sw.js",
+      "destination_path": "asistente_v2/static/sw.js",
+      "source_blob_sha": "2ade629d2d0b07b3aa08f116e9dc2e7c88dda5df",
+      "source_size": 2484,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/bench.py",
+      "destination_path": "asistente_v2/tests/bench.py",
+      "source_blob_sha": "b909e3e1905b0c207e3d9721cf2b0dd97be061af",
+      "source_size": 4512,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/bench_streaming.py",
+      "destination_path": "asistente_v2/tests/bench_streaming.py",
+      "source_blob_sha": "0f890a28154d2971bb6434d4d9138c558006c33c",
+      "source_size": 1682,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/conftest.py",
+      "destination_path": "asistente_v2/tests/conftest.py",
+      "source_blob_sha": "c1ed68156e9f72ef05daf0d4cdb159165cf6372d",
+      "source_size": 345,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_agenda.py",
+      "destination_path": "asistente_v2/tests/test_agenda.py",
+      "source_blob_sha": "f436d4684846146b10e2e161b50712a0fa4d9905",
+      "source_size": 4429,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_auto_mejora.py",
+      "destination_path": "asistente_v2/tests/test_auto_mejora.py",
+      "source_blob_sha": "ade8999d06cf450062cda706b51e09b1499d8e77",
+      "source_size": 6250,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_brain_logic.py",
+      "destination_path": "asistente_v2/tests/test_brain_logic.py",
+      "source_blob_sha": "b499ba70de005ae81b113fbeca85eefa4a27dc27",
+      "source_size": 4121,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_cerebro_logic.py",
+      "destination_path": "asistente_v2/tests/test_cerebro_logic.py",
+      "source_blob_sha": "4527583ac03ef5d17531a92a2adc1b0510822088",
+      "source_size": 2032,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_intenciones.py",
+      "destination_path": "asistente_v2/tests/test_intenciones.py",
+      "source_blob_sha": "16cb44afd705fa8f365c36a0e856bb87bab624d1",
+      "source_size": 6315,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_memoria_auto.py",
+      "destination_path": "asistente_v2/tests/test_memoria_auto.py",
+      "source_blob_sha": "5aecfea84ece9fa082ce061f37f84d1023e5dd3a",
+      "source_size": 3412,
+      "source_mode": "100644",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_memoria_semantica.py",
+      "destination_path": "asistente_v2/tests/test_memoria_semantica.py",
+      "source_blob_sha": "e1b35bafbd09825afabf448e5786b60988ae5b90",
+      "source_size": 1059,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_optimizaciones.py",
+      "destination_path": "asistente_v2/tests/test_optimizaciones.py",
+      "source_blob_sha": "547fd07377c80f881f4445cc4cc35424bdaa9e0d",
+      "source_size": 4522,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_pensador.py",
+      "destination_path": "asistente_v2/tests/test_pensador.py",
+      "source_blob_sha": "502daaed1c94ac4fee31c35ac73672e2d4db7572",
+      "source_size": 3995,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_preferences.py",
+      "destination_path": "asistente_v2/tests/test_preferences.py",
+      "source_blob_sha": "6f36352b729027c733ab668bbba2782283c2e66a",
+      "source_size": 2232,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_sandbox.py",
+      "destination_path": "asistente_v2/tests/test_sandbox.py",
+      "source_blob_sha": "5f6af57e3368af1818ddc204c19465dfd906377e",
+      "source_size": 7448,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_search.py",
+      "destination_path": "asistente_v2/tests/test_search.py",
+      "source_blob_sha": "9fd20edb76d505584c1e3dd74af7e923fb4cddd0",
+      "source_size": 3132,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_sesion_y_robustez.py",
+      "destination_path": "asistente_v2/tests/test_sesion_y_robustez.py",
+      "source_blob_sha": "49aca329dee08b1d0b24fbe618fb47cd604cf37f",
+      "source_size": 2642,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_sesiones.py",
+      "destination_path": "asistente_v2/tests/test_sesiones.py",
+      "source_blob_sha": "a92ffbb35245ae7e309fde0c0b798f68de0bb410",
+      "source_size": 8373,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_streaming.py",
+      "destination_path": "asistente_v2/tests/test_streaming.py",
+      "source_blob_sha": "47f56e03265e7c800ac41557b6d10dcb8fdad6c1",
+      "source_size": 3509,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "asistente_v2/tests/test_system_actions.py",
+      "destination_path": "asistente_v2/tests/test_system_actions.py",
+      "source_blob_sha": "d5516c5684019d34dd8a6a65dbe5f5d96eba5f55",
+      "source_size": 3140,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "requirements.txt",
+      "destination_path": "requirements.txt",
+      "source_blob_sha": "930f28db8df9bf1c7a8844c61b21b2f844b8b197",
+      "source_size": 4586,
+      "source_mode": "100644",
+      "status": "copied_identical"
+    },
+    {
+      "source_path": "rick-web.sh",
+      "destination_path": "rick-web.sh",
+      "source_blob_sha": "c93a23b4bc54a777ab16eab6052f93dc5b4ee03f",
+      "source_size": 592,
+      "source_mode": "100755",
+      "status": "sanitized"
+    },
+    {
+      "source_path": "rick.sh",
+      "destination_path": "rick.sh",
+      "source_blob_sha": "734d5fa1447c5bf195430be20580723d8d037838",
+      "source_size": 101,
+      "source_mode": "100755",
+      "status": "sanitized"
+    }
+  ],
+  "inventory_scope": "Instantánea del traslado inicial (PR #1, 0c717522692ccc20dbc66a40757eee68b7b9c612). Los estados copied_identical/sanitized y source_blob_sha documentan ese traslado y su procedencia, no los hashes actuales tras el desarrollo posterior."
+}

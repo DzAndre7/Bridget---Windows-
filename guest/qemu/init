@@ -1,0 +1,21 @@
+#!/bin/busybox sh
+# PID 1 de imagen dedicada. No ejecutar ni instalar en el host.
+set -eu
+[ "$$" -eq 1 ] || exit 1
+# Cierra permisos de escritura del rootfs antes de montar scratch.
+/bin/busybox find / -xdev -type d -exec /bin/busybox chmod go-w {} \;
+/bin/busybox find / -xdev -type f -exec /bin/busybox chmod go-w {} \;
+/bin/busybox mount -t proc proc /proc
+/bin/busybox mount -t sysfs sysfs /sys
+/bin/busybox mount -t devtmpfs devtmpfs /dev
+/bin/busybox mkdir -p /work
+/bin/busybox mount -t tmpfs -o size=64m,nosuid,nodev,noexec tmpfs /work
+# Kernel con virtio_pci/virtio_blk incorporados. No se carga nada desde la red.
+n=0
+while [ ! -b /dev/vda ] && [ "$n" -lt 50 ]; do
+    /bin/busybox sleep 0.1
+    n=$((n + 1))
+done
+[ -b /dev/vda ] || exit 1
+/bin/busybox chmod 600 /dev/ttyS0 /dev/console /dev/vda
+exec /usr/bin/python3 -I /bridget/agent.py

@@ -1,0 +1,7 @@
+# Windows 11/10 x64, Python 3.11. Perfil completo con TTS local CPU.
+-r app.txt
+-r voice-local.txt
+# Sin ruedas CUDA Linux ni triton en la selección directa.
+# En Windows las distribuciones normales de PyPI permiten probar CPU primero.
+torch==2.5.1 ; sys_platform == "win32"
+torchaudio==2.5.1 ; sys_platform == "win32"

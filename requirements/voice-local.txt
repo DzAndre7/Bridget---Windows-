@@ -1,0 +1,4 @@
+# Fork mantenido que preserva 'from TTS.api import TTS'. No mezclar con TTS.
+# Elegir PRIMERO torch/torchaudio CPU o CUDA del índice oficial de PyTorch.
+coqui-tts==0.27.5
+gruut[es]>=2.4,<3

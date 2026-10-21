@@ -1,0 +1,3 @@
+# Conserva la arquitectura Linux; esto no restaura el sandbox host inseguro.
+-r app.txt
+# Backend de voz local: -r voice-local.txt + torch/torchaudio del índice elegido.
